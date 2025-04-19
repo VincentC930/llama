@@ -32,31 +32,6 @@ export default function ImageInputScreen() {
     })();
   }, [permission, cameraPermissionRequested]);
 
-  if (!permission) {
-    // Camera permissions are still loading
-    return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Loading camera permissions...</ThemedText>
-      </ThemedView>
-    );
-  }
-
-  if (!permission.granted) {
-    // Camera permissions were denied
-    return (
-      <ThemedView style={styles.container}>
-        <ThemedText style={styles.text}>
-          We need camera permissions to take photos. Please enable camera access in your device settings.
-        </ThemedText>
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={() => router.back()}>
-          <Text style={styles.confirmText}>Go Back</Text>
-        </TouchableOpacity>
-      </ThemedView>
-    );
-  }
-
   const toggleCameraType = () => {
     setType((current: CameraType) => (current === 'back' ? 'front' : 'back'));
   };

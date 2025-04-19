@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import OpenAI from "openai";
-import Voice, { SpeechResultsEvent, SpeechErrorEvent } from '@react-native-voice/voice';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+
 
 // Initialize OpenAI client with API key from environment variable
 const client = new OpenAI({
@@ -20,62 +20,6 @@ function TextInputScreen() {
   const colorScheme = useColorScheme();
   const [text, setText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-
-  useEffect(() => {
-    // Initialize voice recognition event handlers
-    Voice.onSpeechStart = onSpeechStartHandler;
-    Voice.onSpeechEnd = onSpeechEndHandler;
-    Voice.onSpeechResults = onSpeechResultsHandler;
-    Voice.onSpeechError = onSpeechErrorHandler;
-
-    // Cleanup function
-    return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
-    };
-  }, []);
-
-  const onSpeechStartHandler = (_: any) => {
-    console.log('Speech recognition started');
-  };
-
-  const onSpeechEndHandler = (_: any) => {
-    setIsListening(false);
-    console.log('Speech recognition ended');
-  };
-
-  const onSpeechResultsHandler = (e: SpeechResultsEvent) => {
-    if (e.value && e.value.length > 0) {
-      const result = e.value[0];
-      setText(result);
-      console.log('Speech to text result:', result);
-    }
-  };
-
-  const onSpeechErrorHandler = (e: SpeechErrorEvent) => {
-    console.error('Speech recognition error:', e);
-    setIsListening(false);
-  };
-
-  const startListening = async () => {
-    try {
-      await Voice.isAvailable();
-      await Voice.start('en-US');
-      setIsListening(true);
-    } catch (error) {
-      console.error('Error starting voice recognition:', error);
-      Alert.alert('Error', 'Speech recognition failed to start. Please try again.');
-    }
-  };
-
-  const stopListening = async () => {
-    try {
-      await Voice.stop();
-      setIsListening(false);
-    } catch (error) {
-      console.error('Error stopping voice recognition:', error);
-    }
-  };
 
   const handleBack = () => {
     router.back();
@@ -149,13 +93,6 @@ function TextInputScreen() {
           <View style={styles.placeholderButton} />
         </View>
 
-        {/* Instructions */}
-        <ThemedView style={styles.instructions}>
-          <IconSymbol name="text.bubble" size={40} color={Colors[colorScheme ?? 'light'].tint} />
-          <ThemedText style={styles.instructionsText}>
-            Type your question or message below and tap Submit to continue.
-          </ThemedText>
-        </ThemedView>
 
         {/* Input area */}
         <ThemedView style={styles.inputContainer}>
@@ -176,24 +113,6 @@ function TextInputScreen() {
             {text.length}/500
           </ThemedText>
         </ThemedView>
-
-        {/* Voice input button */}
-        <TouchableOpacity 
-          style={[
-            styles.voiceButton,
-            isListening && styles.voiceButtonActive
-          ]} 
-          onPress={isListening ? stopListening : startListening}
-        >
-          <IconSymbol 
-            name={isListening ? "mic.fill" : "mic"} 
-            size={24} 
-            color="#FFF" 
-          />
-          <ThemedText style={styles.voiceButtonText}>
-            {isListening ? "Stop Listening" : "Voice Input"}
-          </ThemedText>
-        </TouchableOpacity>
 
         {/* Submit button */}
         <TouchableOpacity 
@@ -267,26 +186,8 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 10,
   },
-  voiceButton: {
-    backgroundColor: '#60A0C0',
-    borderRadius: 12,
-    padding: 14,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  voiceButtonActive: {
-    backgroundColor: '#D04040',
-  },
-  voiceButtonText: {
-    color: '#FFF',
-    fontWeight: '600',
-    fontSize: 16,
-    marginLeft: 10,
-  },
   submitButton: {
-    backgroundColor: '#6090C0',
+    backgroundColor: '#4CAF50',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',

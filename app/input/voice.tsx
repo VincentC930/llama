@@ -121,19 +121,6 @@ function VoiceInputScreen() {
           <View style={styles.placeholderButton} />
         </View>
         
-        {/* Instructions */}
-        <ThemedView style={styles.instructions}>
-          <IconSymbol name="mic" size={40} color={Colors[colorScheme ?? 'light'].tint} />
-          <ThemedText style={styles.instructionsText}>
-            {results.length > 0 
-              ? "Your speech has been transcribed and is ready to submit"
-              : started 
-                ? "Listening to your speech..." 
-                : "Tap the button below to start speaking"
-            }
-          </ThemedText>
-        </ThemedView>
-        
         {/* Speech visualization and transcription */}
         <View style={styles.visualizerContainer}>
           {/* Record/Stop Button */}
@@ -157,13 +144,6 @@ function VoiceInputScreen() {
             </TouchableOpacity>
           )}
           
-          {/* Transcription */}
-          {results.length > 0 && (
-            <ThemedView style={styles.transcriptionContainer}>
-              <ThemedText style={styles.transcriptionLabel}>Transcription:</ThemedText>
-              <ThemedText style={styles.transcriptionText}>{results[0]}</ThemedText>
-            </ThemedView>
-          )}
         </View>
         
         {/* Submit button */}
@@ -181,7 +161,6 @@ function VoiceInputScreen() {
             ) : (
               <>
                 <ThemedText style={styles.submitText}>Submit</ThemedText>
-                <IconSymbol name="arrow.right" size={20} color="#FFF" />
               </>
             )}
           </TouchableOpacity>
@@ -233,7 +212,7 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: '#6090C0',
+    backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 30,
@@ -262,7 +241,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   submitButton: {
-    backgroundColor: '#6090C0',
+    backgroundColor: '#4CAF50',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',

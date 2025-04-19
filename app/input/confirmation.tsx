@@ -63,7 +63,7 @@ export default function ImageConfirmationScreen() {
           >
             <IconSymbol name="chevron.left" size={24} color={Colors[colorScheme ?? 'light'].text} />
           </TouchableOpacity>
-          <ThemedText type="title">Confirm Details</ThemedText>
+          <ThemedText type="subtitle">Confirm</ThemedText>
           <View style={styles.spacer} />
         </View>
         
@@ -79,7 +79,7 @@ export default function ImageConfirmationScreen() {
         </View>
         
         {/* Text Input Section */}
-        <ThemedView style={styles.inputSection}>
+        <ThemedView style={styles.inputSection} lightColor="transparent" darkColor="transparent">
           <ThemedText type="subtitle">Add Description</ThemedText>
           <TextInput
             style={[
@@ -96,7 +96,7 @@ export default function ImageConfirmationScreen() {
         </ThemedView>
         
         {/* Voice Recording Section */}
-        <ThemedView style={styles.inputSection}>
+        <ThemedView style={styles.inputSection} lightColor="transparent" darkColor="transparent">
           <ThemedText type="subtitle">Voice Note</ThemedText>
           
           <ThemedView style={styles.recordingContainer}>
@@ -109,12 +109,12 @@ export default function ImageConfirmationScreen() {
                 onPress={toggleRecording}
               >
                 <IconSymbol 
-                  name={isRecording ? "stop.fill" : "mic.fill"} 
-                  size={28} 
-                  color={isRecording ? "white" : Colors[colorScheme ?? 'light'].tint} 
+                  name={isRecording ? "mic.fill" : "mic"} 
+                  size={24} 
+                  color={isRecording ? "#FFF" : "#4CAF50"} 
                 />
-                <ThemedText style={styles.recordButtonText}>
-                  {isRecording ? "Recording..." : "Record Voice Note"}
+                <ThemedText style={[styles.recordButtonText, isRecording && styles.recordingActiveText]}>
+                  {isRecording ? "Stop Recording" : "Voice Input"}
                 </ThemedText>
               </TouchableOpacity>
             ) : (
@@ -125,7 +125,7 @@ export default function ImageConfirmationScreen() {
                 </View>
                 
                 <TouchableOpacity onPress={deleteRecording}>
-                  <IconSymbol name="trash" size={20} color="#FF6B6B" />
+                  <IconSymbol name="trash" size={20} color="#4CAF50" />
                 </TouchableOpacity>
               </ThemedView>
             )}
@@ -206,19 +206,24 @@ const styles = StyleSheet.create({
   recordButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     padding: 16,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
     backgroundColor: 'transparent',
   },
   recordingActive: {
-    backgroundColor: '#FC5800',
-    borderColor: '#FC5800',
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
   },
   recordButtonText: {
     marginLeft: 8,
     fontSize: 16,
+    color: '#4CAF50',
+  },
+  recordingActiveText: {
+    color: 'white',
   },
   recordingPreview: {
     flexDirection: 'row',
@@ -230,7 +235,7 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
   },
   submitButton: {
-    backgroundColor: '#6090C0',
+    backgroundColor: '#4CAF50',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',

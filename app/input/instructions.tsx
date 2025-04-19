@@ -105,18 +105,6 @@ export default function InstructionsScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Success message */}
-        <ThemedView style={styles.successContainer}>
-          <IconSymbol 
-            name="checkmark.circle.fill" 
-            size={60} 
-            color={Colors[colorScheme ?? 'light'].tint}
-          />
-          <ThemedText type="subtitle" style={styles.successText}>
-            Your request has been submitted!
-          </ThemedText>
-        </ThemedView>
         
         {/* AI Response section (if available) */}
         {aiResponse ? (
@@ -156,31 +144,7 @@ export default function InstructionsScreen() {
                 </ThemedText>
               </ThemedView>
             </ThemedView>
-            
-            <ThemedView style={styles.card}>
-              <ThemedText type="subtitle">Helpful Tips</ThemedText>
-              
-              <ThemedView style={styles.tipItem}>
-                <IconSymbol name="lightbulb.fill" size={20} color="#FFC107" />
-                <ThemedText style={styles.tipText}>
-                  Keep your device nearby for notifications about your request.
-                </ThemedText>
-              </ThemedView>
-              
-              <ThemedView style={styles.tipItem}>
-                <IconSymbol name="lightbulb.fill" size={20} color="#FFC107" />
-                <ThemedText style={styles.tipText}>
-                  You can check the status of your submission in the history section.
-                </ThemedText>
-              </ThemedView>
-              
-              <ThemedView style={styles.tipItem}>
-                <IconSymbol name="lightbulb.fill" size={20} color="#FFC107" />
-                <ThemedText style={styles.tipText}>
-                  For faster results, make sure your images are clear and well-lit.
-                </ThemedText>
-              </ThemedView>
-            </ThemedView>
+          
           </>
         )}
         
@@ -191,7 +155,7 @@ export default function InstructionsScreen() {
         >
           <IconSymbol name="house.fill" size={18} color="white" />
           <ThemedText style={styles.returnButtonText}>
-            Return to Help Center
+            Return to Home
           </ThemedText>
         </TouchableOpacity>
       </ScrollView>
@@ -221,7 +185,6 @@ const styles = StyleSheet.create({
     padding: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   doneButtonText: {
     fontWeight: '600',
@@ -229,7 +192,6 @@ const styles = StyleSheet.create({
   audioButton: {
     padding: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
     marginRight: 8,
   },
   audioButtonActive: {
@@ -248,7 +210,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 12,
     marginBottom: 20,
-    backgroundColor: 'rgba(0,0,0,0.03)',
   },
   paragraph: {
     marginVertical: 12,
@@ -273,7 +234,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   returnButton: {
-    backgroundColor: '#6090C0',
+    backgroundColor: '#4CAF50',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

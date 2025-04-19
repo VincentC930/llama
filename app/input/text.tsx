@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import OpenAI from "openai";
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+
+// Initialize OpenAI client
+const client = new OpenAI();
 
 function TextInputScreen() {
   const colorScheme = useColorScheme();
@@ -18,20 +22,43 @@ function TextInputScreen() {
     router.back();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!text.trim() || isSubmitting) return;
     
     setIsSubmitting(true);
     
-    // In a real app, you would process the text here
-    // For now, we'll just navigate to the instructions screen
-    
-    setTimeout(() => {
-      setIsSubmitting(false);
-      router.push({
-        pathname: '/input/instructions'
+    try {
+      // Make API call to OpenAI
+      const response = await client.responses.create({
+        model: "gpt-4.1",
+        input: [
+          {
+            role: "developer",
+            content: "Be helpful and concise."
+          },
+          {
+            role: "user",
+            content: text.trim(),
+          },
+        ],
       });
-    }, 1000); // Simulate processing delay
+      
+      const aiResponse = response.output_text;
+      
+      // Navigate to instructions screen with the response
+      router.push({
+        pathname: '/input/instructions',
+        params: { aiResponse }
+      });
+      
+    } catch (error) {
+      console.error('Error calling OpenAI API:', error);
+      Alert.alert(
+        'Error',
+        'Something went wrong while processing your request. Please try again.'
+      );
+      setIsSubmitting(false);
+    }
   };
 
   return (

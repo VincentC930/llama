@@ -1,8 +1,8 @@
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, TouchableOpacity, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
-import { useState, useEffect } from 'react';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -13,6 +13,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 export default function InstructionsScreen() {
   const colorScheme = useColorScheme();
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const params = useLocalSearchParams<{ aiResponse?: string }>();
+  const aiResponse = params.aiResponse;
 
   // Stop speech when component unmounts
   useEffect(() => {
@@ -38,23 +40,31 @@ export default function InstructionsScreen() {
     }
     
     // Get all the text content to speak
-    const textToSpeak = [
+    let textToSpeak = [
       'Your request has been submitted!',
       'Next Steps',
-      'Your image and additional information have been processed. Here\'s what you can expect next:',
-      '1. Our system is analyzing your submission to provide the best assistance.',
-      '2. You\'ll receive a notification once the analysis is complete.',
-      '3. For complex requests, additional information may be requested.',
-      'Helpful Tips',
-      'Keep your device nearby for notifications about your request.',
-      'You can check the status of your submission in the history section.',
-      'For faster results, make sure your images are clear and well-lit.'
-    ].join('. ');
+    ];
+    
+    // Add AI response to speech if available
+    if (aiResponse) {
+      textToSpeak.push('AI Response: ' + aiResponse);
+    } else {
+      textToSpeak = textToSpeak.concat([
+        'Your image and additional information have been processed. Here\'s what you can expect next:',
+        '1. Our system is analyzing your submission to provide the best assistance.',
+        '2. You\'ll receive a notification once the analysis is complete.',
+        '3. For complex requests, additional information may be requested.',
+        'Helpful Tips',
+        'Keep your device nearby for notifications about your request.',
+        'You can check the status of your submission in the history section.',
+        'For faster results, make sure your images are clear and well-lit.'
+      ]);
+    }
     
     setIsSpeaking(true);
     
     try {
-      await Speech.speak(textToSpeak, {
+      await Speech.speak(textToSpeak.join('. '), {
         language: 'en',
         pitch: 1.0,
         rate: 0.9,
@@ -108,59 +118,71 @@ export default function InstructionsScreen() {
           </ThemedText>
         </ThemedView>
         
-        {/* Instructions sections */}
-        <ThemedView style={styles.card}>
-          <ThemedText type="subtitle">Next Steps</ThemedText>
-          <ThemedText style={styles.paragraph}>
-            Your image and additional information have been processed. Here's what you can expect next:
-          </ThemedText>
-          
-          <ThemedView style={styles.stepItem}>
-            <IconSymbol name="1.circle.fill" size={24} color={Colors[colorScheme ?? 'light'].tint} />
-            <ThemedText style={styles.stepText}>
-              Our system is analyzing your submission to provide the best assistance.
+        {/* AI Response section (if available) */}
+        {aiResponse ? (
+          <ThemedView style={styles.card}>
+            <ThemedText type="subtitle">AI Response</ThemedText>
+            <ThemedText style={styles.aiResponse}>
+              {aiResponse}
             </ThemedText>
           </ThemedView>
-          
-          <ThemedView style={styles.stepItem}>
-            <IconSymbol name="2.circle.fill" size={24} color={Colors[colorScheme ?? 'light'].tint} />
-            <ThemedText style={styles.stepText}>
-              You'll receive a notification once the analysis is complete.
-            </ThemedText>
-          </ThemedView>
-          
-          <ThemedView style={styles.stepItem}>
-            <IconSymbol name="3.circle.fill" size={24} color={Colors[colorScheme ?? 'light'].tint} />
-            <ThemedText style={styles.stepText}>
-              For complex requests, additional information may be requested.
-            </ThemedText>
-          </ThemedView>
-        </ThemedView>
-        
-        <ThemedView style={styles.card}>
-          <ThemedText type="subtitle">Helpful Tips</ThemedText>
-          
-          <ThemedView style={styles.tipItem}>
-            <IconSymbol name="lightbulb.fill" size={20} color="#FFC107" />
-            <ThemedText style={styles.tipText}>
-              Keep your device nearby for notifications about your request.
-            </ThemedText>
-          </ThemedView>
-          
-          <ThemedView style={styles.tipItem}>
-            <IconSymbol name="lightbulb.fill" size={20} color="#FFC107" />
-            <ThemedText style={styles.tipText}>
-              You can check the status of your submission in the history section.
-            </ThemedText>
-          </ThemedView>
-          
-          <ThemedView style={styles.tipItem}>
-            <IconSymbol name="lightbulb.fill" size={20} color="#FFC107" />
-            <ThemedText style={styles.tipText}>
-              For faster results, make sure your images are clear and well-lit.
-            </ThemedText>
-          </ThemedView>
-        </ThemedView>
+        ) : (
+          // Standard instructions when no AI response
+          <>
+            <ThemedView style={styles.card}>
+              <ThemedText type="subtitle">Next Steps</ThemedText>
+              <ThemedText style={styles.paragraph}>
+                Your image and additional information have been processed. Here's what you can expect next:
+              </ThemedText>
+              
+              <ThemedView style={styles.stepItem}>
+                <IconSymbol name="1.circle.fill" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                <ThemedText style={styles.stepText}>
+                  Our system is analyzing your submission to provide the best assistance.
+                </ThemedText>
+              </ThemedView>
+              
+              <ThemedView style={styles.stepItem}>
+                <IconSymbol name="2.circle.fill" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                <ThemedText style={styles.stepText}>
+                  You'll receive a notification once the analysis is complete.
+                </ThemedText>
+              </ThemedView>
+              
+              <ThemedView style={styles.stepItem}>
+                <IconSymbol name="3.circle.fill" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                <ThemedText style={styles.stepText}>
+                  For complex requests, additional information may be requested.
+                </ThemedText>
+              </ThemedView>
+            </ThemedView>
+            
+            <ThemedView style={styles.card}>
+              <ThemedText type="subtitle">Helpful Tips</ThemedText>
+              
+              <ThemedView style={styles.tipItem}>
+                <IconSymbol name="lightbulb.fill" size={20} color="#FFC107" />
+                <ThemedText style={styles.tipText}>
+                  Keep your device nearby for notifications about your request.
+                </ThemedText>
+              </ThemedView>
+              
+              <ThemedView style={styles.tipItem}>
+                <IconSymbol name="lightbulb.fill" size={20} color="#FFC107" />
+                <ThemedText style={styles.tipText}>
+                  You can check the status of your submission in the history section.
+                </ThemedText>
+              </ThemedView>
+              
+              <ThemedView style={styles.tipItem}>
+                <IconSymbol name="lightbulb.fill" size={20} color="#FFC107" />
+                <ThemedText style={styles.tipText}>
+                  For faster results, make sure your images are clear and well-lit.
+                </ThemedText>
+              </ThemedView>
+            </ThemedView>
+          </>
+        )}
         
         {/* Return to help button */}
         <TouchableOpacity 
@@ -263,5 +285,10 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     marginLeft: 8,
+  },
+  aiResponse: {
+    marginTop: 12,
+    lineHeight: 22,
+    fontSize: 16,
   },
 }); 

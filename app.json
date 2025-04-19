@@ -13,8 +13,10 @@
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to take photos for help requests",
         "NSPhotoLibraryUsageDescription": "This app accesses your photos to help analyze your requests",
-        "NSMicrophoneUsageDescription": "This app uses the microphone to record voice for help requests"
-      }
+        "NSMicrophoneUsageDescription": "This app uses the microphone to record voice for help requests",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.vincentc930.llama"
     },
     "android": {
       "adaptiveIcon": {
@@ -48,6 +50,14 @@
     "experiments": {
       "tsconfigPaths": true,
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "048ef519-57c4-4524-a486-3566726c5071"
+      }
     }
   }
 }

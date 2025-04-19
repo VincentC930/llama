@@ -39,11 +39,17 @@ export default function ImageConfirmationScreen() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Navigate back to the help screen
-    router.replace('/(tabs)/help');
+    try {
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Navigate to the instructions page using relative path
+      router.replace('../input/instructions');
+    } catch (error) {
+      console.error('Navigation error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   return (

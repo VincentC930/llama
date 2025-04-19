@@ -1,174 +1,111 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, TouchableOpacity, Platform } from 'react-native';
-import { Audio } from 'expo-av';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming, cancelAnimation } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import OpenAI from "openai";
+import Voice from '@react-native-voice/voice';
+
+
+// Initialize OpenAI client with API key from environment variable
+const client = new OpenAI({
+  apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
+});
 
 function VoiceInputScreen() {
   const colorScheme = useColorScheme();
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [permissionResponse, requestPermission] = Audio.usePermissions();
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [started, setStarted] = useState(false);
+  const [results, setResults] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasRecording, setHasRecording] = useState(false);
-  
-  // Animation value for recording indicator
-  const pulseAnim = useSharedValue(1);
-  
-  // Request permissions when component mounts
-  useEffect(() => {
-    requestPermission();
-    return () => {
-      stopRecording();
-    };
-  }, []);
-  
-  // Timer for recording duration
-  useEffect(() => {
-    let interval: NodeJS.Timeout | undefined;
-    
-    if (isRecording) {
-      interval = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
-      }, 1000);
-    } else if (!isRecording && recordingDuration !== 0) {
-      clearInterval(interval as NodeJS.Timeout);
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRecording, recordingDuration]);
-  
-  // Animation for recording indicator
-  useEffect(() => {
-    if (isRecording) {
-      pulseAnim.value = withRepeat(
-        withTiming(1.2, { duration: 1000 }),
-        -1,
-        true
-      );
-    } else {
-      cancelAnimation(pulseAnim);
-      pulseAnim.value = 1;
-    }
-  }, [isRecording]);
-  
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: pulseAnim.value }],
-    };
-  });
-  
-  const startRecording = async () => {
-    try {
-      if (permissionResponse?.status !== 'granted') {
-        await requestPermission();
-        return;
-      }
-      
-      // Prepare recording
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-      
-      // Start recording
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      
-      setRecording(recording);
-      setIsRecording(true);
-      setRecordingDuration(0);
-      setHasRecording(false);
-      
-    } catch (err) {
-      console.error('Failed to start recording', err);
-    }
-  };
-  
-  const stopRecording = async () => {
-    if (!recording) return;
-    
-    try {
-      await recording.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-      });
-      
-      setIsRecording(false);
-      setHasRecording(true);
-      
-    } catch (err) {
-      console.error('Failed to stop recording', err);
-    }
-  };
-  
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-  
+
+  // Navigation handler
   const handleBack = () => {
     router.back();
   };
-  
-  const handleSubmit = () => {
-    if (!hasRecording || isSubmitting) return;
+
+  useEffect(() => {
+    Voice.onSpeechError = onSpeechError;
+    Voice.onSpeechResults = onSpeechResults;
+
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners);
+    } 
+  }, []);
+
+  const startSpeechToText = async () => {
+    setResults([]);
+    console.log(results)
+    try {
+      console.log("Starting speech to text1");
+      await Voice.start("en-US");
+      console.log("Starting speech to text2");
+    } catch (error) {
+      console.log(error);
+    }
+    setStarted(true);
+  };
+
+  const onSpeechResults = async (result: any) => {
+    console.log("Speech results");
+    setResults(result.value);
+    
+    console.log(result)
+
+  };
+
+  const onSpeechError = (error: any) => {
+    console.log(error);
+  };
+
+  const stopSpeechToText = async () => {
+    await Voice.stop();
+    setStarted(false);
+  };
+
+  // Submit handler
+  const handleSubmit = async () => {
+    if (!results.length || isSubmitting) return;
     
     setIsSubmitting(true);
+    const transcription = results[0];
     
-    // In a real app, you would upload the recording here
-    // For now, we'll just navigate to the instructions screen
+    console.log('Submitting transcription to OpenAI:', transcription);
     
-    setTimeout(() => {
-      setIsSubmitting(false);
-      router.push({
-        pathname: '/input/instructions'
+    try {
+      // Make API call to OpenAI
+      const response = await client.responses.create({
+        model: "gpt-4.1",
+        input: [
+          {
+            role: "developer",
+            content: "Be helpful and concise."
+          },
+          {
+            role: "user",
+            content: transcription,
+          },
+        ],
       });
-    }, 1000); // Simulate processing delay
-  };
-  
-  const handleRecordButton = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
+      
+      const aiResponse = response.output_text;
+      
+      // Navigate to instructions screen with the response
+      router.push({
+        pathname: '/input/instructions',
+        params: { aiResponse }
+      });
+      
+    } catch (error) {
+      console.error('Error calling OpenAI API:', error);
+      setIsSubmitting(false);
     }
   };
-  
-  const handleRerecord = () => {
-    setHasRecording(false);
-    setRecording(null);
-    setRecordingDuration(0);
-  };
-  
-  // Check if microphone permissions are denied
-  if (permissionResponse && !permissionResponse.granted && permissionResponse.canAskAgain === false) {
-    return (
-      <ThemedView style={styles.container}>
-        <ThemedText style={styles.permissionText}>
-          We need microphone permissions to record voice. Please enable microphone access in your device settings.
-        </ThemedText>
-        <TouchableOpacity 
-          style={styles.goBackButton} 
-          onPress={handleBack}>
-          <ThemedText style={styles.goBackText}>Go Back</ThemedText>
-        </TouchableOpacity>
-      </ThemedView>
-    );
-  }
-  
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.content}>
@@ -188,80 +125,67 @@ function VoiceInputScreen() {
         <ThemedView style={styles.instructions}>
           <IconSymbol name="mic" size={40} color={Colors[colorScheme ?? 'light'].tint} />
           <ThemedText style={styles.instructionsText}>
-            {hasRecording 
-              ? "Your recording is ready to submit"
-              : isRecording 
-                ? "Recording in progress..." 
-                : "Tap the microphone button to start recording your message"
+            {results.length > 0 
+              ? "Your speech has been transcribed and is ready to submit"
+              : started 
+                ? "Listening to your speech..." 
+                : "Tap the button below to start speaking"
             }
           </ThemedText>
         </ThemedView>
         
-        {/* Recording visualization */}
-        <ThemedView style={styles.visualizerContainer}>
-          {isRecording && (
-            <Animated.View style={[styles.pulseCircle, animatedStyle]} />
-          )}
-          
+        {/* Speech visualization and transcription */}
+        <View style={styles.visualizerContainer}>
           {/* Record/Stop Button */}
-          <TouchableOpacity 
-            style={[
-              styles.recordButton, 
-              isRecording && styles.recordingButton
-            ]} 
-            onPress={handleRecordButton}
-            disabled={isSubmitting || (hasRecording && !isRecording)}
-          >
-            <IconSymbol 
-              name={isRecording ? "stop.fill" : "mic.fill"} 
-              size={32} 
-              color="white" 
-            />
-          </TouchableOpacity>
-          
-          {/* Timer */}
-          {(isRecording || hasRecording) && (
-            <ThemedText style={styles.timer}>
-              {formatTime(recordingDuration)}
-            </ThemedText>
+          {!started ? (
+            <TouchableOpacity 
+              style={styles.recordButton}
+              onPress={startSpeechToText}
+              disabled={isSubmitting}
+            >
+              <IconSymbol name="mic.fill" size={32} color="white" />
+              <ThemedText style={styles.buttonText}>START</ThemedText>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={[styles.recordButton, styles.recordingButton]}
+              onPress={stopSpeechToText}
+              disabled={isSubmitting}
+            >
+              <IconSymbol name="stop.fill" size={32} color="white" />
+              <ThemedText style={styles.buttonText}>STOP</ThemedText>
+            </TouchableOpacity>
           )}
-        </ThemedView>
-        
-        {/* Action buttons */}
-        <View style={styles.actionsContainer}>
-          {hasRecording && (
-            <>
-              {/* Re-record button */}
-              <TouchableOpacity 
-                style={styles.rerecordButton} 
-                onPress={handleRerecord}
-                disabled={isSubmitting}
-              >
-                <IconSymbol name="arrow.counterclockwise" size={20} color={Colors[colorScheme ?? 'light'].text} />
-                <ThemedText style={styles.rerecordText}>Record again</ThemedText>
-              </TouchableOpacity>
-              
-              {/* Submit button */}
-              <TouchableOpacity 
-                style={[
-                  styles.submitButton,
-                  isSubmitting && styles.submitButtonDisabled
-                ]} 
-                onPress={handleSubmit}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ThemedText style={styles.submitText}>Processing...</ThemedText>
-                ) : (
-                  <>
-                    <ThemedText style={styles.submitText}>Submit</ThemedText>
-                    <IconSymbol name="arrow.right" size={20} color="#FFF" />
-                  </>
-                )}
-              </TouchableOpacity>
-            </>
+          
+          {/* Transcription */}
+          {results.length > 0 && (
+            <ThemedView style={styles.transcriptionContainer}>
+              <ThemedText style={styles.transcriptionLabel}>Transcription:</ThemedText>
+              <ThemedText style={styles.transcriptionText}>{results[0]}</ThemedText>
+            </ThemedView>
           )}
         </View>
+        
+        {/* Submit button */}
+        {results.length > 0 && (
+          <TouchableOpacity 
+            style={[
+              styles.submitButton,
+              isSubmitting && styles.submitButtonDisabled
+            ]} 
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ThemedText style={styles.submitText}>Processing...</ThemedText>
+            ) : (
+              <>
+                <ThemedText style={styles.submitText}>Submit</ThemedText>
+                <IconSymbol name="arrow.right" size={20} color="#FFF" />
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -289,13 +213,15 @@ const styles = StyleSheet.create({
   },
   instructions: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 30,
+    padding: 15,
   },
   instructionsText: {
     textAlign: 'center',
     marginTop: 15,
-    fontSize: 16,
-    lineHeight: 24,
+    marginBottom: 10,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   visualizerContainer: {
     flex: 1,
@@ -303,43 +229,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-  pulseCircle: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(200, 50, 50, 0.2)',
-  },
   recordButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
     backgroundColor: '#6090C0',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 30,
   },
   recordingButton: {
     backgroundColor: '#d9534f',
   },
-  timer: {
-    marginTop: 20,
-    fontSize: 24,
-    fontWeight: '600',
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18,
+    marginTop: 10,
   },
-  actionsContainer: {
-    marginTop: 'auto',
-    paddingTop: 20,
-  },
-  rerecordButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  transcriptionContainer: {
     padding: 15,
-    marginBottom: 15,
+    borderRadius: 12,
+    width: '100%',
+    maxHeight: 200,
   },
-  rerecordText: {
-    marginLeft: 8,
+  transcriptionLabel: {
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  transcriptionText: {
     fontSize: 16,
+    lineHeight: 24,
   },
   submitButton: {
     backgroundColor: '#6090C0',
@@ -348,7 +268,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginTop: 20,
+    marginBottom: 10,
   },
   submitButtonDisabled: {
     backgroundColor: '#A0B0C0',
@@ -359,24 +280,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 18,
     marginRight: 10,
-  },
-  permissionText: {
-    textAlign: 'center',
-    fontSize: 16,
-    marginBottom: 30,
-    paddingHorizontal: 20,
-  },
-  goBackButton: {
-    backgroundColor: '#6090C0',
-    borderRadius: 12,
-    padding: 15,
-    alignItems: 'center',
-    marginHorizontal: 20,
-  },
-  goBackText: {
-    color: '#FFF',
-    fontWeight: '600',
-    fontSize: 16,
   },
 });
 

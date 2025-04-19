@@ -160,7 +160,7 @@ export default function SettingsScreen() {
         <ThemedView style={styles.inputContainer}>
           <TextInput
             style={styles.linkInput}
-            placeholder="Paste a link to add to knowledge base"
+            placeholder="Paste URL"
             placeholderTextColor="#999"
             value={sourceLink}
             onChangeText={setSourceLink}
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'column',
-    marginTop: 12,
+    marginTop: 16,
     marginBottom: 16,
   },
   linkInput: {

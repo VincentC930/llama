@@ -28,6 +28,13 @@ export default function TabLayout() {
       }}
       initialRouteName="help">
       <Tabs.Screen
+        name="index"
+        options={{
+          href: null, // This hides it from the tab bar
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="help"
         options={{
           title: 'Help',

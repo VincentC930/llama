@@ -10,10 +10,13 @@ type InputMethodOption = 'image' | 'voice' | 'text';
 
 export default function HelpScreen() {
   const handleSelectInputMethod = (method: InputMethodOption) => {
-    // This will navigate to a next page in the future
-    // For now it's just a dummy function
-    console.log(`Selected input method: ${method}`);
-    // router.push(`/input/${method}`); // Uncomment when next page is ready
+    // Navigate based on the selected input method
+    if (method === 'image') {
+      router.push('/input/image');
+    } else {
+      // For other methods, just log for now (dummy implementations)
+      console.log(`Selected input method: ${method}`);
+    }
   };
 
   return (

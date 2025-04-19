@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Switch, Platform, View } from 'react-native';
+import { StyleSheet, Switch, Platform, View, TouchableOpacity } from 'react-native';
 
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
@@ -8,27 +8,20 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
+// Define response style types for better type safety
+type ResponseStyle = 'concise' | 'balanced' | 'precise';
+
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
   const [isOnline, setIsOnline] = useState(true);
-  const [precisionValue, setPrecisionValue] = useState(0.5);
+  const [responseStyle, setResponseStyle] = useState<ResponseStyle>('balanced');
 
   const toggleOnlineMode = () => {
     setIsOnline(previousState => !previousState);
   };
 
-  const handlePrecisionChange = (value: number) => {
-    setPrecisionValue(value);
-  };
-
-  const getSliderLabel = () => {
-    if (precisionValue < 0.33) {
-      return 'Concise';
-    } else if (precisionValue < 0.66) {
-      return 'Balanced';
-    } else {
-      return 'Precise';
-    }
+  const handleSelectResponseStyle = (style: ResponseStyle) => {
+    setResponseStyle(style);
   };
 
   return (
@@ -43,7 +36,7 @@ export default function SettingsScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Settings</ThemedText>
+        <ThemedText type="title" style={{color: '#4CAF50'}}>Settings</ThemedText>
       </ThemedView>
       
       <ThemedView style={styles.settingSection}>
@@ -56,7 +49,7 @@ export default function SettingsScreen() {
             </ThemedText>
             <ThemedText style={styles.settingDescription}>
               {isOnline 
-                ? 'Use internet for latest information' 
+                ? 'Use internet to connect to more powerful models' 
                 : 'Work without internet connection'}
             </ThemedText>
           </ThemedView>
@@ -64,7 +57,7 @@ export default function SettingsScreen() {
           <Switch
             trackColor={{ 
               false: Platform.select({ ios: '#D1D1D6', android: '#767577' }), 
-              true: Colors[colorScheme ?? 'light'].tint 
+              true: '#4CAF50' 
             }}
             thumbColor={Platform.select({
               ios: '#FFFFFF',
@@ -80,51 +73,66 @@ export default function SettingsScreen() {
       <ThemedView style={styles.settingSection}>
         <ThemedText type="subtitle">Response Style</ThemedText>
         
-        <ThemedView style={styles.settingRow}>
-          <ThemedView style={styles.sliderLabelContainer}>
-            <ThemedText style={styles.sliderLabel}>Concise</ThemedText>
-            <ThemedText style={styles.sliderLabel}>Precise</ThemedText>
-          </ThemedView>
-        </ThemedView>
-        
-        <View style={styles.slider}>
-          <View 
-            style={[
-              styles.sliderTrack, 
-              { 
-                backgroundColor: '#D1D1D6',
-              }
-            ]}
+        <View style={styles.backpackOptions}>
+          {/* Concise option */}
+          <TouchableOpacity 
+            style={styles.backpackOption}
+            onPress={() => handleSelectResponseStyle('concise')}
           >
-            <View 
-              style={[
-                styles.sliderFill, 
-                { 
-                  width: `${precisionValue * 100}%`,
-                  backgroundColor: Colors[colorScheme ?? 'light'].tint 
-                }
-              ]} 
+            <IconSymbol 
+              name="backpack" 
+              size={40} 
+              color={responseStyle === 'concise' ? '#4CAF50' : '#888'} 
             />
-            <View 
-              style={[
-                styles.sliderThumb, 
-                { 
-                  left: `${precisionValue * 100}%`,
-                  backgroundColor: Colors[colorScheme ?? 'light'].tint 
-                }
-              ]} 
+            <ThemedText style={[
+              styles.backpackLabel,
+              responseStyle === 'concise' && styles.selectedLabel
+            ]}>
+              Concise
+            </ThemedText>
+          </TouchableOpacity>
+          
+          {/* Balanced option */}
+          <TouchableOpacity 
+            style={styles.backpackOption}
+            onPress={() => handleSelectResponseStyle('balanced')}
+          >
+            <IconSymbol 
+              name="backpack" 
+              size={40} 
+              color={responseStyle === 'balanced' ? '#4CAF50' : '#888'} 
             />
-          </View>
+            <ThemedText style={[
+              styles.backpackLabel,
+              responseStyle === 'balanced' && styles.selectedLabel
+            ]}>
+              Balanced
+            </ThemedText>
+          </TouchableOpacity>
+          
+          {/* Precise option */}
+          <TouchableOpacity 
+            style={styles.backpackOption}
+            onPress={() => handleSelectResponseStyle('precise')}
+          >
+            <IconSymbol 
+              name="backpack" 
+              size={40} 
+              color={responseStyle === 'precise' ? '#4CAF50' : '#888'} 
+            />
+            <ThemedText style={[
+              styles.backpackLabel,
+              responseStyle === 'precise' && styles.selectedLabel
+            ]}>
+              Precise
+            </ThemedText>
+          </TouchableOpacity>
         </View>
         
-        <ThemedView style={styles.sliderValueContainer}>
-          <ThemedText style={styles.sliderValueText}>{getSliderLabel()}</ThemedText>
-        </ThemedView>
-        
         <ThemedText style={styles.settingDescription}>
-          {precisionValue < 0.33 
+          {responseStyle === 'concise' 
             ? 'Shorter responses with key information only'
-            : precisionValue < 0.66 
+            : responseStyle === 'balanced' 
               ? 'Balanced responses with essential details'
               : 'Detailed responses with comprehensive information'}
         </ThemedText>
@@ -164,44 +172,25 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     marginTop: 4,
   },
-  slider: {
-    width: '100%',
-    height: 40,
-    justifyContent: 'center',
-  },
-  sliderTrack: {
-    height: 4,
-    borderRadius: 2,
-    position: 'relative',
-  },
-  sliderFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  sliderThumb: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    position: 'absolute',
-    top: -8,
-    marginLeft: -10,
-  },
-  sliderLabelContainer: {
+  backpackOptions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 4,
+    marginTop: 20,
+    marginBottom: 20,
+    paddingHorizontal: 10,
   },
-  sliderLabel: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  sliderValueContainer: {
+  backpackOption: {
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'center',
+    padding: 10,
   },
-  sliderValueText: {
-    fontSize: 16,
+  backpackLabel: {
+    marginTop: 8,
+    fontSize: 14,
     fontWeight: '500',
+  },
+  selectedLabel: {
+    color: '#4CAF50',
+    fontWeight: '700',
   },
 }); 

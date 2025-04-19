@@ -14,7 +14,8 @@
         "NSCameraUsageDescription": "This app uses the camera to take photos for help requests",
         "NSPhotoLibraryUsageDescription": "This app accesses your photos to help analyze your requests",
         "NSMicrophoneUsageDescription": "This app uses the microphone to record voice for help requests"
-      }
+      },
+      "bundleIdentifier": "com.anonymous.llama"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,8 +26,13 @@
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "package": "com.anonymous.llama"
     },
     "web": {
       "bundler": "metro",

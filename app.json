@@ -25,6 +25,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "react-native-maps",
       "expo-router",
       [
         "expo-splash-screen",

@@ -1,6 +1,5 @@
+import React from 'react';
 import { Image, StyleSheet, Platform, View, Button, Text } from 'react-native';
-import { useLLM, LLAMA3_2_1B } from 'react-native-executorch';
-import { copyAssetToFS } from "@/lib/copyAsset";
 
 import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
@@ -8,24 +7,6 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
 export default function HomeScreen() {
-  const llama = useLLM({
-    modelSource: LLAMA3_2_1B,
-    tokenizerSource: require('@/assets/models/llama3/tokenizer.bin'),
-    systemPrompt: 'Be a helpful assistant',
-    messageHistory: [
-      { role: 'user', content: 'Hello' },
-      { role: 'assistant', content: 'Hi, how can I help you?' },
-    ],
-    contextWindowLength: 3,
-  });
-
-  const handleInference = async () => {
-    try {
-      llama.generate('What is the capital of France?');
-    } catch (error) {
-      console.error('Error during inference:', error);
-    }
-  };
 
   return (
     <ParallaxScrollView
@@ -42,10 +23,6 @@ export default function HomeScreen() {
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <Button title="Run LLM Inference" onPress={handleInference} />
-        <View style={styles.responseContainer}>
-          <Text style={styles.responseText}>LLM Response: {llama.response}</Text>
-        </View>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 2: Explore</ThemedText>

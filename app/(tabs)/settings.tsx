@@ -213,7 +213,7 @@ export default function SettingsScreen() {
                     onPress={() => removeKnowledgeSource(source)}
                     style={styles.chipDelete}
                   >
-                    <IconSymbol name="xmark" size={14} color="#FFF" />
+                    <IconSymbol name="xmark" size={10} color="#FFF" />
                   </TouchableOpacity>
                 </ThemedView>
               ))}
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     color: 'white',
-    fontWeight: '500',
+    fontWeight: '400',
     maxWidth: 150,
   },
   chipDelete: {

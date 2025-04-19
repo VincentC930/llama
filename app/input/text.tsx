@@ -78,17 +78,9 @@ function TextInputScreen() {
           >
             <IconSymbol name="chevron.left" size={24} color={Colors[colorScheme ?? 'light'].text} />
           </TouchableOpacity>
-          <ThemedText type="title">Ask SOS.AI</ThemedText>
+          <ThemedText type="title">Ask AI</ThemedText>
           <View style={styles.placeholderButton} />
         </View>
-
-        {/* Instructions */}
-        {/* <ThemedView style={styles.instructions}>
-          <IconSymbol name="text.bubble" size={40} color={Colors[colorScheme ?? 'light'].tint} />
-          <ThemedText style={styles.instructionsText}>
-            Type your question or message below and tap Submit to continue.
-          </ThemedText>
-        </ThemedView> */}
 
         {/* Input area */}
         <ThemedView style={styles.inputContainer}>
@@ -124,7 +116,6 @@ function TextInputScreen() {
           ) : (
             <>
               <ThemedText style={styles.submitText}>Submit</ThemedText>
-              <IconSymbol name="arrow.right" size={20} color="#FFF" />
             </>
           )}
         </TouchableOpacity>
@@ -136,7 +127,7 @@ function TextInputScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    width: '80%',
+    width: '95%',
     maxWidth: 500,
     marginLeft: 'auto',
     marginRight: 'auto',
@@ -149,7 +140,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 20,
   },
   backButton: {
     padding: 10,
@@ -171,14 +162,14 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 20,
     borderRadius: 12,
-    padding: -15,
+    padding: 10,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255, 0.3)',
   },
   textInput: {
     flex: 1,
     fontSize: 18,
-    padding: 10,
+    padding: 0,
     margin: 15,
     textAlignVertical: 'top',
   },

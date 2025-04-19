@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Switch, Platform, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Switch, Platform, View, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
@@ -15,6 +15,11 @@ export default function SettingsScreen() {
   const colorScheme = useColorScheme();
   const [isOnline, setIsOnline] = useState(true);
   const [responseStyle, setResponseStyle] = useState<ResponseStyle>('balanced');
+  const [sourceLink, setSourceLink] = useState('');
+  const [knowledgeSources, setKnowledgeSources] = useState([
+    'https://example.com/resource1',
+    'https://docs.llamasources.com'
+  ]);
 
   const toggleOnlineMode = () => {
     setIsOnline(previousState => !previousState);
@@ -22,6 +27,17 @@ export default function SettingsScreen() {
 
   const handleSelectResponseStyle = (style: ResponseStyle) => {
     setResponseStyle(style);
+  };
+
+  const addKnowledgeSource = () => {
+    if (sourceLink && !knowledgeSources.includes(sourceLink)) {
+      setKnowledgeSources([...knowledgeSources, sourceLink]);
+      setSourceLink('');
+    }
+  };
+
+  const removeKnowledgeSource = (source: string) => {
+    setKnowledgeSources(knowledgeSources.filter(item => item !== source));
   };
 
   return (
@@ -137,6 +153,55 @@ export default function SettingsScreen() {
               : 'Detailed responses with comprehensive information'}
         </ThemedText>
       </ThemedView>
+
+      <ThemedView style={styles.settingSection}>
+        <ThemedText type="subtitle">Advanced Knowledge Base</ThemedText>
+        
+        <ThemedView style={styles.inputContainer}>
+          <TextInput
+            style={styles.linkInput}
+            placeholder="Paste a link to add to knowledge base"
+            placeholderTextColor="#999"
+            value={sourceLink}
+            onChangeText={setSourceLink}
+          />
+          <TouchableOpacity 
+            style={[
+              styles.addButton, 
+              !sourceLink ? styles.addButtonDisabled : null
+            ]}
+            disabled={!sourceLink}
+            onPress={addKnowledgeSource}
+          >
+            <ThemedText style={styles.addButtonText}>Add Source</ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
+
+        <ScrollView 
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.chipsContainer}
+        >
+          {knowledgeSources.map((source, index) => (
+            <ThemedView key={index} style={styles.chip}>
+              <ThemedText
+                numberOfLines={1}
+                ellipsizeMode="middle"
+                style={styles.chipText}
+              >
+                {source}
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => removeKnowledgeSource(source)}
+                style={styles.chipDelete}
+              >
+                <IconSymbol name="xmark" size={14} color="#FFF" />
+              </TouchableOpacity>
+            </ThemedView>
+          ))}
+        </ScrollView>
+      </ThemedView>
     </ParallaxScrollView>
   );
 }
@@ -192,5 +257,63 @@ const styles = StyleSheet.create({
   selectedLabel: {
     color: '#4CAF50',
     fontWeight: '700',
+  },
+  inputContainer: {
+    flexDirection: 'column',
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  linkInput: {
+    height: 44,
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    color: '#333333',
+    backgroundColor: 'white',
+  },
+  addButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 16,
+    height: 44,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addButtonDisabled: {
+    backgroundColor: '#A5D6A7',
+    opacity: 0.5,
+  },
+  addButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  chipsContainer: {
+    paddingVertical: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingLeft: 12,
+    paddingRight: 6,
+    marginRight: 8,
+  },
+  chipText: {
+    color: 'white',
+    fontWeight: '500',
+    maxWidth: 150,
+  },
+  chipDelete: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 6,
   },
 }); 

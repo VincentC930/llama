@@ -128,7 +128,6 @@ function TextInputScreen() {
           ) : (
             <>
               <ThemedText style={styles.submitText}>Submit</ThemedText>
-              <IconSymbol name="arrow.right" size={20} color="#FFF" />
             </>
           )}
         </TouchableOpacity>

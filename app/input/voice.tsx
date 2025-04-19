@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, TouchableOpacity, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Audio } from 'expo-av';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -9,8 +10,6 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import OpenAI from "openai";
-import Voice from '@react-native-voice/voice';
-
 
 // Initialize OpenAI client with API key from environment variable
 const client = new OpenAI({
@@ -19,8 +18,9 @@ const client = new OpenAI({
 
 function VoiceInputScreen() {
   const colorScheme = useColorScheme();
-  const [started, setStarted] = useState(false);
-  const [results, setResults] = useState<string[]>([]);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioUri, setAudioUri] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Navigation handler
@@ -29,55 +29,91 @@ function VoiceInputScreen() {
   };
 
   useEffect(() => {
-    Voice.onSpeechError = onSpeechError;
-    Voice.onSpeechResults = onSpeechResults;
-
     return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
-    } 
-  }, []);
+      if (recording) {
+        recording.stopAndUnloadAsync();
+      }
+    };
+  }, [recording]);
 
-  const startSpeechToText = async () => {
-    setResults([]);
-    console.log(results)
+  async function startRecording() {
     try {
-      console.log("Starting speech to text1");
-      await Voice.start("en-US");
-      console.log("Starting speech to text2");
+      // Request permissions
+      const { status } = await Audio.requestPermissionsAsync();
+      
+      if (status !== 'granted') {
+        console.error('Permission to access microphone was denied');
+        return;
+      }
+
+      // Prepare the recording session
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      console.log('Starting recording...');
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      
+      setRecording(recording);
+      setIsRecording(true);
     } catch (error) {
-      console.log(error);
+      console.error('Failed to start recording', error);
     }
-    setStarted(true);
-  };
+  }
 
-  const onSpeechResults = async (result: any) => {
-    console.log("Speech results");
-    setResults(result.value);
+  async function stopRecording() {
+    if (!recording) return;
+
+    console.log('Stopping recording...');
+    setIsRecording(false);
     
-    console.log(result)
-
-  };
-
-  const onSpeechError = (error: any) => {
-    console.log(error);
-  };
-
-  const stopSpeechToText = async () => {
-    await Voice.stop();
-    setStarted(false);
-  };
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setAudioUri(uri);
+      console.log('Recording stopped and stored at', uri);
+    } catch (error) {
+      console.error('Failed to stop recording', error);
+    }
+  }
 
   // Submit handler
   const handleSubmit = async () => {
-    if (!results.length || isSubmitting) return;
+    if (!audioUri || isSubmitting) return;
     
     setIsSubmitting(true);
-    const transcription = results[0];
     
-    console.log('Submitting transcription to OpenAI:', transcription);
+    console.log('Submitting audio to OpenAI:', audioUri);
     
     try {
-      // Make API call to OpenAI
+      // Create a FormData object to send the audio file
+      const formData = new FormData();
+      formData.append('file', {
+        uri: audioUri,
+        type: 'audio/m4a',
+        name: 'audio.m4a',
+      } as any);
+      formData.append('model', 'whisper-1');
+      
+      // First transcribe the audio using Whisper API
+      const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+      
+      const transcriptionData = await transcriptionResponse.json();
+      const transcription = transcriptionData.text;
+      
+      console.log('Transcription:', transcription);
+      
+      // Now send the transcription to GPT for processing
       const response = await client.responses.create({
         model: "gpt-4.1",
         input: [
@@ -101,7 +137,7 @@ function VoiceInputScreen() {
       });
       
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
+      console.error('Error processing audio:', error);
       setIsSubmitting(false);
     }
   };
@@ -121,13 +157,13 @@ function VoiceInputScreen() {
           <View style={styles.placeholderButton} />
         </View>
         
-        {/* Speech visualization and transcription */}
+        {/* Recording visualization */}
         <View style={styles.visualizerContainer}>
           {/* Record/Stop Button */}
-          {!started ? (
+          {!isRecording ? (
             <TouchableOpacity 
               style={styles.recordButton}
-              onPress={startSpeechToText}
+              onPress={startRecording}
               disabled={isSubmitting}
             >
               <IconSymbol name="mic.fill" size={32} color="white" />
@@ -136,7 +172,7 @@ function VoiceInputScreen() {
           ) : (
             <TouchableOpacity 
               style={[styles.recordButton, styles.recordingButton]}
-              onPress={stopSpeechToText}
+              onPress={stopRecording}
               disabled={isSubmitting}
             >
               <IconSymbol name="stop.fill" size={32} color="white" />
@@ -144,10 +180,19 @@ function VoiceInputScreen() {
             </TouchableOpacity>
           )}
           
+          {/* Recording status */}
+          {isRecording && (
+            <ThemedText style={styles.statusText}>Recording...</ThemedText>
+          )}
+          
+          {/* Recording complete indicator */}
+          {audioUri && !isRecording && (
+            <ThemedText style={styles.statusText}>Recording complete</ThemedText>
+          )}
         </View>
         
-        {/* Submit button */}
-        {results.length > 0 && (
+        {/* Submit button - only show after recording is complete */}
+        {audioUri && !isRecording && (
           <TouchableOpacity 
             style={[
               styles.submitButton,
@@ -190,18 +235,6 @@ const styles = StyleSheet.create({
   placeholderButton: {
     width: 44, // Same width as back button for balance
   },
-  instructions: {
-    alignItems: 'center',
-    marginBottom: 30,
-    padding: 15,
-  },
-  instructionsText: {
-    textAlign: 'center',
-    marginTop: 15,
-    marginBottom: 10,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
   visualizerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -226,19 +259,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginTop: 10,
   },
-  transcriptionContainer: {
-    padding: 15,
-    borderRadius: 12,
-    width: '100%',
-    maxHeight: 200,
-  },
-  transcriptionLabel: {
+  statusText: {
+    fontSize: 18,
     fontWeight: '600',
-    marginBottom: 10,
-  },
-  transcriptionText: {
-    fontSize: 16,
-    lineHeight: 24,
+    marginTop: 20,
   },
   submitButton: {
     backgroundColor: '#4CAF50',

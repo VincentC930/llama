@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,7 +9,8 @@ import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-
+import { useModel } from '@/app/context/ModelContext';
+import { useLLM, LLAMA3_2_1B_QLORA } from 'react-native-executorch';
 
 // Initialize OpenAI client with API key from environment variable
 const client = new OpenAI({
@@ -20,56 +21,59 @@ function TextInputScreen() {
   const colorScheme = useColorScheme();
   const [text, setText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { modelReady, downloadProgress, modelPath, tokenizerPath } = useModel();
+  const [aiResponse, setAiResponse] = useState('');
+
+  // const llama = useLLM({
+  //   modelSource: modelPath,
+  //   tokenizerSource: tokenizerPath,
+  //   systemPrompt: 'Be a helpful assistant',
+  //   contextWindowLength: 3,
+  // });
+
+  const llama = useLLM({
+    modelSource: LLAMA3_2_1B_QLORA,
+    tokenizerSource: tokenizerPath,
+    systemPrompt: 'Be a helpful assistant',
+    contextWindowLength: 3,
+  });
+
+  // Monitor llama response and generation state
+  useEffect(() => {
+    if (llama.response && !llama.isGenerating) {
+      setAiResponse(llama.response);
+      setIsSubmitting(false);
+      console.log(llama.response);
+      // Navigate to instructions screen with the response
+      router.push({
+        pathname: '/input/instructions',
+        params: { aiResponse: llama.response }
+      });
+    }
+  }, [llama.response, llama.isGenerating]);
 
   const handleBack = () => {
     router.back();
   };
 
   const handleSubmit = async () => {
-    if (!text.trim() || isSubmitting) return;
-    
-    setIsSubmitting(true);
+    if (!text.trim() || isSubmitting || !modelReady) {
+      if (!modelReady) {
+        Alert.alert('Model not ready', 'Please wait for the model to load before submitting.');
+      }
+      return;
+    }
     
     try {
+      setIsSubmitting(true);
+      console.log('Generating response...');
       
-      // Make API call to OpenAI
-      const response = await client.responses.create({
-        model: "gpt-4.1",
-        input: [
-          {
-            role: "developer",
-            content: "Be helpful and concise."
-          },
-          {
-            role: "user",
-            content: text.trim(),
-          },
-        ],
-      });
+      // Instead of using the return value, use the message from the input
+      await llama.generate(text);
       
-      const aiResponse = response.output_text;
-      
-      // Navigate to instructions screen with the response
-      router.push({
-        pathname: '/input/instructions',
-        params: { aiResponse }
-      });
-      
+      // Response handling moved to useEffect
     } catch (error: any) {
-      console.error('Error calling OpenAI API:', error);
-      
-      // Show appropriate error message
-      let errorMessage = 'Something went wrong while processing your request. Please try again.';
-      
-      if (error.message && error.message.includes('API key')) {
-        errorMessage = 'OpenAI API key is not properly configured. Please check your .env file.';
-      } else if (error.status === 401) {
-        errorMessage = 'Invalid API key. Please check your OpenAI API key.';
-      } else if (error.status === 429) {
-        errorMessage = 'Too many requests or quota exceeded. Please try again later.';
-      }
-      
-      Alert.alert('Error', errorMessage);
+      console.log(error);
       setIsSubmitting(false);
     }
   };
@@ -93,6 +97,22 @@ function TextInputScreen() {
           <View style={styles.placeholderButton} />
         </View>
 
+        {/* Download progress indicator */}
+        {!modelReady && downloadProgress > 0 && downloadProgress < 1 && (
+          <View style={styles.downloadContainer}>
+            <ThemedText style={styles.downloadText}>
+              Downloading model: {Math.round(downloadProgress * 100)}%
+            </ThemedText>
+            <View style={styles.progressBarContainer}>
+              <View 
+                style={[
+                  styles.progressBar, 
+                  { width: `${downloadProgress * 100}%` }
+                ]} 
+              />
+            </View>
+          </View>
+        )}
 
         {/* Input area */}
         <ThemedView style={styles.inputContainer}>
@@ -118,17 +138,19 @@ function TextInputScreen() {
         <TouchableOpacity 
           style={[
             styles.submitButton,
-            (!text.trim() || isSubmitting) && styles.submitButtonDisabled
+            (!text.trim() || isSubmitting || !modelReady) && styles.submitButtonDisabled
           ]} 
           onPress={handleSubmit}
-          disabled={!text.trim() || isSubmitting}
+          disabled={!text.trim() || isSubmitting || !modelReady}
         >
           {isSubmitting ? (
             <ThemedText style={styles.submitText}>Processing...</ThemedText>
+          ) : !modelReady && downloadProgress > 0 ? (
+            <ThemedText style={styles.submitText}>Downloading model...</ThemedText>
+          ) : !modelReady ? (
+            <ThemedText style={styles.submitText}>Preparing model...</ThemedText>
           ) : (
-            <>
-              <ThemedText style={styles.submitText}>Submit</ThemedText>
-            </>
+            <ThemedText style={styles.submitText}>Submit</ThemedText>
           )}
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -203,6 +225,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 18,
     marginRight: 10,
+  },
+  downloadContainer: {
+    marginBottom: 20,
+  },
+  downloadText: {
+    fontSize: 14,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  progressBarContainer: {
+    height: 10,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
   },
 }); 
 

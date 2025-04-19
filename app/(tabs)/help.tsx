@@ -13,6 +13,14 @@ export default function HelpScreen() {
     // Navigate based on the selected input method
     if (method === 'image') {
       router.push('/input/image');
+    } else if (method === 'text') {
+      router.push({
+        pathname: '/input/text'
+      });
+    } else if (method === 'voice') {
+      router.push({
+        pathname: '/input/voice'
+      });
     } else {
       // For other methods, just log for now (dummy implementations)
       console.log(`Selected input method: ${method}`);

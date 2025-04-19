@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, Image, Modal } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Image } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
 import { CameraView, CameraType, FlashMode, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -15,7 +15,6 @@ export default function ImageInputScreen() {
   const [flash, setFlash] = useState<FlashMode>('off');
   const [permission, requestPermission] = useCameraPermissions();
   const [lastPhoto, setLastPhoto] = useState<string | null>(null);
-  const [showConfirmation, setShowConfirmation] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const cameraRef = useRef<CameraView | null>(null);
   const [cameraPermissionRequested, setCameraPermissionRequested] = useState(false);
@@ -73,26 +72,35 @@ export default function ImageInputScreen() {
   const takePicture = async () => {
     if (cameraRef.current) {
       try {
+        setIsProcessing(true);
         const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+        
         if (photo) {
           const imageUri = photo.uri;
+          let finalImageUri = imageUri;
+          
           // Check if the image is HEIC format
           if (imageUri.toLowerCase().endsWith('.heic')) {
-            const convertedImage = await convertHeicToJpeg(imageUri);
-            setLastPhoto(convertedImage);
-          } else {
-            setLastPhoto(imageUri);
+            finalImageUri = await convertHeicToJpeg(imageUri);
           }
-          setShowConfirmation(true); // Show the confirmation modal
+          
+          // Navigate to confirmation screen with the image
+          router.push({
+            pathname: '/input/confirmation',
+            params: { imageUri: finalImageUri }
+          });
         }
       } catch (e) {
         console.error('Error taking picture:', e);
+      } finally {
+        setIsProcessing(false);
       }
     }
   };
 
   const pickImage = async () => {
     try {
+      setIsProcessing(true);
       // No permissions request is necessary for launching the image library
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -104,6 +112,7 @@ export default function ImageInputScreen() {
       if (!result.canceled) {
         const imageAsset = result.assets[0];
         const imageUri = imageAsset.uri;
+        let finalImageUri = imageUri;
         
         // Check if image is HEIC/HEIF format by extension or mime type
         const isHeicFormat = 
@@ -114,15 +123,19 @@ export default function ImageInputScreen() {
         
         if (isHeicFormat) {
           console.log('HEIC/HEIF image detected, converting to JPEG');
-          const convertedImage = await convertHeicToJpeg(imageUri);
-          setLastPhoto(convertedImage);
-        } else {
-          setLastPhoto(imageUri);
+          finalImageUri = await convertHeicToJpeg(imageUri);
         }
-        setShowConfirmation(true);
+        
+        // Navigate to confirmation screen with the image
+        router.push({
+          pathname: '/input/confirmation',
+          params: { imageUri: finalImageUri }
+        });
       }
     } catch (e) {
       console.error('Error picking image:', e);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -144,30 +157,6 @@ export default function ImageInputScreen() {
     }
   };
 
-  const handleConfirm = async () => {
-    if (!lastPhoto) return;
-    
-    try {
-      setIsProcessing(true);
-      
-      // Simulate processing the image
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // For now, just return to the previous screen
-      router.back();
-      
-    } catch (error) {
-      console.error('Error processing image:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleRetake = () => {
-    setShowConfirmation(false);
-    setLastPhoto(null);
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <CameraView
@@ -176,7 +165,7 @@ export default function ImageInputScreen() {
         facing={type}
         flash={flash}
       >
-        {/* Flash Button - Top Left */}
+        {/* Flash Button - Top Right */}
         <TouchableOpacity style={styles.flashButton} onPress={toggleFlash}>
           <IconSymbol 
             name={flash === 'off' ? 'bolt.slash' : flash === 'on' ? 'bolt.fill' : 'bolt'} 
@@ -196,71 +185,37 @@ export default function ImageInputScreen() {
         {/* Bottom Controls Container */}
         <View style={styles.buttonContainer}>
           {/* Gallery Button - Left */}
-          <TouchableOpacity style={styles.iconButton} onPress={pickImage}>
+          <TouchableOpacity 
+            style={styles.iconButton} 
+            onPress={pickImage}
+            disabled={isProcessing}
+          >
             <IconSymbol name="photo.on.rectangle" size={24} color="white" />
           </TouchableOpacity>
           
           {/* Take Picture Button - Center */}
-          <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-            <View style={styles.captureButtonInner} />
+          <TouchableOpacity 
+            style={[styles.captureButton, isProcessing && styles.disabledButton]} 
+            onPress={takePicture}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <View style={styles.processingIndicator} />
+            ) : (
+              <View style={styles.captureButtonInner} />
+            )}
           </TouchableOpacity>
           
           {/* Flip Camera Button - Right */}
-          <TouchableOpacity style={styles.iconButton} onPress={toggleCameraType}>
+          <TouchableOpacity 
+            style={styles.iconButton} 
+            onPress={toggleCameraType}
+            disabled={isProcessing}
+          >
             <IconSymbol name="camera.rotate" size={24} color="white" />
           </TouchableOpacity>
         </View>
       </CameraView>
-      
-      {/* Confirmation Modal */}
-      <Modal
-        visible={showConfirmation}
-        transparent={true}
-        animationType="slide"
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Confirm Image</Text>
-            
-            {lastPhoto && (
-              <Image source={{ uri: lastPhoto }} style={styles.previewImageLarge} />
-            )}
-            
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
-                onPress={handleRetake}
-                disabled={isProcessing}
-              >
-                <Text style={styles.retakeText}>Retake</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmButton]} 
-                onPress={handleConfirm}
-                disabled={isProcessing}
-              >
-                <Text style={styles.confirmText}>
-                  {isProcessing ? 'Processing...' : 'Confirm'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-      
-      {/* Small preview thumbnail (when not in confirmation mode) */}
-      {lastPhoto && !showConfirmation && (
-        <View style={styles.preview}>
-          <Image source={{ uri: lastPhoto }} style={styles.previewImage} />
-          <TouchableOpacity 
-            style={styles.closePreview} 
-            onPress={() => setLastPhoto(null)}
-          >
-            <Text style={styles.closeText}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -321,87 +276,17 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     backgroundColor: 'white',
   },
-  preview: {
-    position: 'absolute',
-    right: 20,
-    top: 40,
-    width: 80,
-    height: 120,
-    borderRadius: 10,
-    overflow: 'hidden',
-    borderWidth: 2,
+  disabledButton: {
+    opacity: 0.7,
+  },
+  processingIndicator: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
     borderColor: 'white',
-  },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-  },
-  closePreview: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 15,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeText: {
-    color: 'white',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 20,
-    width: '90%',
-    alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
-  },
-  previewImageLarge: {
-    width: '100%',
-    height: 350,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  modalButton: {
-    padding: 12,
-    borderRadius: 8,
-    minWidth: '45%',
-    alignItems: 'center',
-  },
-  confirmButton: {
-    backgroundColor: '#6090C0',
-    borderWidth: 2,
-    borderColor: '#6090C0',
-  },
-  cancelButton: {
-    borderColor: '#6090C0',
-    borderWidth: 2,
+    borderTopColor: 'transparent',
+    transform: [{ rotate: '45deg' }],
   },
   flashButton: {
     position: 'absolute',

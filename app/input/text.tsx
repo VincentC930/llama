@@ -10,14 +10,16 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
-const openaiApiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+const ENDPOINT = "http://10.197.236.114:8000";
 
 // Initialize OpenAI client
+const openaiApiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 const client = new OpenAI({apiKey: openaiApiKey, dangerouslyAllowBrowser: true});
 
 function TextInputScreen() {
   const colorScheme = useColorScheme();
   const [text, setText] = useState('');
+  const [response, setReponse] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleBack = () => {
@@ -30,28 +32,35 @@ function TextInputScreen() {
     setIsSubmitting(true);
     
     try {
-      // Make API call to OpenAI
-      const response = await client.responses.create({
-        model: "gpt-4.1",
-        input: [
-          {
-            role: "developer",
-            content: "Be helpful and concise."
-          },
-          {
-            role: "user",
-            content: "Be helpful and concise. "+text.trim(),
-          },
-        ],
+
+      console.log("text: ", text)
+      console.log("making api call for text")
+
+      const response = await fetch(`${ENDPOINT}/process`, {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: "Help the user.",
+          text: text.trim(),
+          image_base64: "", // Optional, only if you plan to use it later
+          audio_base64: "",
+        }),
       });
       
-      const aiResponse = response.output_text;
+      const data = await response.json();
+      const aiResponse = data.response;
       
-      // Navigate to instructions screen with the response
-      router.push({
-        pathname: '/input/instructions',
-        params: { aiResponse }
-      });
+      if (response) {
+        // Navigate to instructions screen with the response
+        router.push({
+          pathname: '/input/instructions',
+          params: { aiResponse }
+        });
+      } else {
+        console.error('Error calling OpenAI API, empty response.');
+      }
       
     } catch (error) {
       console.error('Error calling OpenAI API:', error);

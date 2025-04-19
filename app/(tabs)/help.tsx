@@ -16,7 +16,7 @@ export default function HelpScreen() {
     if (method === 'image') {
       router.push('/input/image');
     } else if (method === 'voice') {
-      router.push('/input/voice');
+      router.push('/input/voice_');
     } else if (method === 'text') {
       router.push('/input/text');
     }

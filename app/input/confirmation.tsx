@@ -12,6 +12,7 @@ import OpenAI from "openai";
 import * as FileSystem from 'expo-file-system';
 
 const openaiApiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+const ENDPOINT = "http://10.197.236.114:8000";
 
 // Initialize OpenAI client
 const client = new OpenAI({apiKey: openaiApiKey, dangerouslyAllowBrowser: true});
@@ -19,7 +20,8 @@ const client = new OpenAI({apiKey: openaiApiKey, dangerouslyAllowBrowser: true})
 export default function ImageConfirmationScreen() {
   const params = useLocalSearchParams();
   const imageUri = params.imageUri as string | undefined;
-  const [text, setText] = useState('');
+  const recordingUri = params.recordingUri as string | undefined;
+  const [text, setText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [hasRecording, setHasRecording] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,14 +45,14 @@ export default function ImageConfirmationScreen() {
     setHasRecording(false);
   };
 
-  const convertImageUriToBase64 = async (imageUri: string) => {
+  // takes image or audio uri and returns base64 encoding
+  const convertUriToBase64 = async (uri: string) => {
     try {
-      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      const dataUrl = `data:image/jpeg;base64,${base64}`;
-      console.log('dataUrl created');
-      return dataUrl;
+      console.log('base64 encoding created');
+      return base64;
     } catch (error) {
       console.error("Error converting image to base64:", error);
       return null;
@@ -59,21 +61,60 @@ export default function ImageConfirmationScreen() {
 
   const sendImageUriAsBase64 = async (imageUri: string) => {
     try {
-      const dataUrl = await convertImageUriToBase64(imageUri);
-      const response = await client.responses.create({
-        model: "gpt-4.1-mini",
-        input: [
-            {
-                role: "user",
-                content: [
-                    { type: "input_text", text: "what's in this image?" },
-                    { type: "input_image", image_url: `${dataUrl}`, },
-                ],
-            },
-        ],
+      const dataUrl = await convertUriToBase64(imageUri);
+      const response = await fetch(`${ENDPOINT}/process`, {
+          method: 'POST',
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt: "Help the user.",
+            text: text,
+            image_base64: dataUrl,
+            audio_base64: "",
+          }),
       });
-      console.log("awaiting response\n");
-      const aiResponse = response.output_text;
+
+      const data = await response.json();
+      const aiResponse = data.response;
+
+      console.log(aiResponse)
+
+      router.push({
+        pathname: '/input/instructions',
+        params: { aiResponse }
+      });
+    
+    } catch (error) {
+      console.error('Error calling OpenAI API:', error);
+          Alert.alert(
+            'Error',
+            'Something went wrong while processing your request. Please try again.'
+          );
+          setIsSubmitting(false);
+    }
+  };
+
+  const sendRecordingUriAsBase64 = async (recordingUri: string) => {
+    try {
+      const dataUrl = await convertUriToBase64(recordingUri);
+      const response = await fetch(`${ENDPOINT}/process`, {
+          method: 'POST',
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt: "Help the user with this audio recording.",
+            text: "",
+            image_base64: "",
+            audio_base64: dataUrl,
+          }),
+      });
+
+      const data = await response.json();
+      const aiResponse = data.response;
+
+      console.log(aiResponse)
 
       // Navigate to instructions screen with the response
       router.push({
@@ -99,6 +140,9 @@ export default function ImageConfirmationScreen() {
       if (imageUri) {
         console.log("image received");
         sendImageUriAsBase64(imageUri);
+      } else if (recordingUri) {
+        console.log("recording received");
+        sendRecordingUriAsBase64(recordingUri);
       }
       
       router.replace('../input/instructions');

@@ -33,17 +33,19 @@ function VoiceInputScreen() {
   
   // Timer for recording duration
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: NodeJS.Timeout | undefined;
     
     if (isRecording) {
       interval = setInterval(() => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
     } else if (!isRecording && recordingDuration !== 0) {
-      clearInterval(interval);
+      clearInterval(interval as NodeJS.Timeout);
     }
     
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isRecording, recordingDuration]);
   
   // Animation for recording indicator

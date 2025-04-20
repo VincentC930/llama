@@ -78,8 +78,6 @@ export default function ImageConfirmationScreen() {
       const data = await response.json();
       const aiResponse = data.response;
 
-      console.log(aiResponse)
-
       router.push({
         pathname: '/input/instructions',
         params: { aiResponse }
@@ -113,8 +111,6 @@ export default function ImageConfirmationScreen() {
 
       const data = await response.json();
       const aiResponse = data.response;
-
-      console.log(aiResponse)
 
       // Navigate to instructions screen with the response
       router.push({

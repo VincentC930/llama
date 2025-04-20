@@ -18,19 +18,6 @@ const ENDPOINT = "http://10.197.236.114:8000";
 const openaiApiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 const client = new OpenAI({apiKey: openaiApiKey, dangerouslyAllowBrowser: true});
 
-const ConnectivityStatus = () => {
-  const [isConnected, setIsConnected] = useState(null);
-
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
-      setIsConnected(state.isConnected);
-    });
-
-    // Cleanup on unmount
-    return () => unsubscribe();
-  }, []);
-}
-
 function TextInputScreen() {
   const colorScheme = useColorScheme();
   const [text, setText] = useState('');
@@ -38,13 +25,7 @@ function TextInputScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { modelReady, downloadProgress, modelPath, tokenizerPath } = useModel();
   const [aiResponse, setAiResponse] = useState('');
-
-  // const llama = useLLM({
-  //   modelSource: modelPath,
-  //   tokenizerSource: tokenizerPath,
-  //   systemPrompt: 'Be a helpful assistant',
-  //   contextWindowLength: 3,
-  // });
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
 
   const llama = useLLM({
     modelSource: LLAMA3_2_1B_QLORA,
@@ -52,6 +33,15 @@ function TextInputScreen() {
     systemPrompt: 'Be a helpful assistant',
     contextWindowLength: 3,
   });
+
+  // keep track of internet connectivity
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Monitor llama response and generation state
   useEffect(() => {
@@ -80,42 +70,35 @@ function TextInputScreen() {
     }
     
     try {
-      console.log("text prompt");
+      setIsSubmitting(true);
+      console.log('Generating response to text...');
 
-      const response = await fetch(`${ENDPOINT}/process`, {
-        method: 'POST',
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: "Help the user.",
-          text: text.trim(),
-          image_base64: "", // Optional, only if you plan to use it later
-          audio_base64: "",
-        }),
-      });
-      
-      const data = await response.json();
-      const aiResponse = data.response;
-      
-      if (response) {
-        // Navigate to instructions screen with the response
+      let response;
+      if (isConnected == false) {
+        console.log("offline llama");
+        await llama.generate(text);
+      } else {
+        response = await fetch(`${ENDPOINT}/process`, {
+          method: 'POST',
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt: "Help the user.",
+            text: text.trim(),
+            image_base64: "",
+            audio_base64: "",
+          }),
+        });
+
+        const data = await response.json();
+        const aiResponse = data.response;
+
         router.push({
           pathname: '/input/instructions',
           params: { aiResponse }
         });
-      } else {
-        console.error('Error calling OpenAI API, empty response.');
       }
-      
-      // offline mode 
-      setIsSubmitting(true);
-      console.log('Generating response...');
-      
-      // Instead of using the return value, use the message from the input
-      await llama.generate(text);
-      
-      // Response handling moved to useEffect
     } catch (error: any) {
       console.log(error);
       setIsSubmitting(false);

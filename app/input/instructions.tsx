@@ -176,6 +176,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 24,
+    marginLeft: 10,
   },
   headerButtons: {
     flexDirection: 'row',

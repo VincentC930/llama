@@ -1,17 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Image, Platform, ScrollView, ActivityIndicator, TouchableOpacity, View as RNView } from 'react-native';
+import { StyleSheet, Image, Platform, ScrollView, ActivityIndicator, TouchableOpacity, View as RNView, View, ToastAndroid, Alert } from 'react-native';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
-
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Entypo from '@expo/vector-icons/Entypo';
-import { fetchRoutes, fetchRoutePoints } from '../../database';
-import { RouteType, RoutePointType } from '../../types';
+import { fetchRoutes, fetchRoutePoints } from '@/database';
+import { RouteType, RoutePointType } from '@/types';
+// import { LinearGradient } from 'expo-linear-gradient';
 
 // Mock route and weather data for demonstration
 const MOCK_ROUTE = {
@@ -71,16 +67,16 @@ export default function ExploreScreen() {
           const points = await fetchRoutePoints(mostRecentRoute.id);
           setRoutePoints(points);
           
-          // Generate briefing data
+          // Generate briefing data with real route information
           const briefing = generateBriefingData(location, mostRecentRoute, points);
           setBriefingData(briefing);
           
-          // Generate mock chat response
-          const response = generateChatResponse(briefing);
+          // Fetch chat response from API
+          const response = await fetchChatResponse(briefing);
           setChatResponse(response);
         } else {
           console.log('No routes found, using mock data');
-          // No routes found, use mock data for demonstration
+          // No routes found, keep using mock data for demonstration
           setUseMockData(true);
           setActiveRoute(MOCK_ROUTE);
           setRoutePoints(MOCK_ROUTE_POINTS);
@@ -89,8 +85,8 @@ export default function ExploreScreen() {
           const briefing = generateBriefingData(location, MOCK_ROUTE, MOCK_ROUTE_POINTS);
           setBriefingData(briefing);
           
-          // Generate mock chat response
-          const response = generateChatResponse(briefing);
+          // Fetch chat response from API using mock data
+          const response = await fetchChatResponse(briefing);
           setChatResponse(response);
         }
       } catch (error) {
@@ -113,22 +109,30 @@ export default function ExploreScreen() {
     initialize();
   }, []);
 
-  // Calculate distance between two coordinates in kilometers
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // Radius of the earth in km
-    const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1);
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2); 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-    const d = R * c; // Distance in km
-    return d;
-  };
+  // Calculate distance between two coordinates in kilometers using the Haversine formula
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const degToRad = (degrees: number): number => degrees * (Math.PI / 180);
 
-  const deg2rad = (deg: number) => {
-    return deg * (Math.PI/180);
+    // Convert latitude and longitude from degrees to radians
+    const lat1Rad = degToRad(lat1);
+    const lon1Rad = degToRad(lon1);
+    const lat2Rad = degToRad(lat2);
+    const lon2Rad = degToRad(lon2);
+
+    // Difference in coordinates
+    const deltaLat = lat2Rad - lat1Rad;
+    const deltaLon = lon2Rad - lon1Rad;
+
+    // Haversine formula calculation
+    const a =
+      Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+      Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+      Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distance in kilometers
   };
 
   // Generate JSON briefing data based on user location and route information
@@ -138,6 +142,7 @@ export default function ExploreScreen() {
     points: RoutePointType[]
   ) => {
     if (!location || !route || points.length < 2) {
+      console.log('Insufficient data to generate briefing, using mock data');
       // Provide default values if we're missing data
       return {
         routeName: route?.name || 'Demo Route',
@@ -179,7 +184,7 @@ export default function ExploreScreen() {
       }
     });
     
-    // Calculate total route distance
+    // Calculate total route distance using Haversine formula
     let totalDistance = 0;
     for (let i = 0; i < points.length - 1; i++) {
       totalDistance += calculateDistance(
@@ -201,14 +206,50 @@ export default function ExploreScreen() {
       );
     }
     
+    // Add distance from current location to nearest point for more accuracy
+    // if nearest point is not the first point
+    if (nearestPointIndex > 0) {
+      // Calculate remaining distance to the nearest point
+      const distanceToNearestPoint = calculateDistance(
+        location.coords.latitude,
+        location.coords.longitude,
+        points[nearestPointIndex].latitude,
+        points[nearestPointIndex].longitude
+      );
+      
+      // Adjust completed distance based on user's position between points
+      const segmentLength = calculateDistance(
+        points[nearestPointIndex-1].latitude,
+        points[nearestPointIndex-1].longitude,
+        points[nearestPointIndex].latitude,
+        points[nearestPointIndex].longitude
+      );
+      
+      // If user is past the nearest point, count that segment as complete
+      // Otherwise adjust based on proximity
+      if (distanceToNearestPoint <= 0.05) { // Within 50 meters
+        completedDistance = calculateDistance(
+          points[0].latitude,
+          points[0].longitude,
+          points[nearestPointIndex].latitude,
+          points[nearestPointIndex].longitude
+        );
+      }
+    }
+    
+    // Calculate remaining distance
+    const remainingDistance = totalDistance - completedDistance;
+    
     // Calculate progress percentage
     const progressPercentage = Math.min(100, Math.round((completedDistance / totalDistance) * 100));
     
     // Calculate estimated time to completion (assuming average walking speed of 5 km/h)
-    const remainingDistance = totalDistance - completedDistance;
     const estimatedHours = remainingDistance / 5;
     const hours = Math.floor(estimatedHours);
     const minutes = Math.round((estimatedHours - hours) * 60);
+    
+    // Attempt to fetch real weather data (would need a weather API)
+    // For now, using the mock weather data
     
     return {
       routeName: route.name,
@@ -227,7 +268,7 @@ export default function ExploreScreen() {
         hours,
         minutes,
       },
-      weather: WEATHER_DATA,
+      weather: WEATHER_DATA, // Replace with actual weather API call if available
       timestamp: new Date().toISOString(),
     };
   };
@@ -306,6 +347,155 @@ export default function ExploreScreen() {
     return encouragements[Math.floor(Math.random() * encouragements.length)];
   };
 
+  // Add fetch function for chat responses
+  const fetchChatResponse = async (briefingData: any) => {
+    try {
+      // Configure your actual API endpoint here
+      const apiUrl = 'https://your-api-endpoint.com/path';
+      
+      // Prepare the data to send including the required parameters
+      const dataToSend = {
+        ...briefingData,
+        distanceTravelled: briefingData.completedDistance,
+        distanceLeft: briefingData.totalDistance - briefingData.completedDistance,
+        daysTravelled: 0, // Hard coded to 0 as requested
+        long: briefingData.currentLocation?.coords?.longitude || 0,
+        lat: briefingData.currentLocation?.coords?.latitude || 0
+      };
+      
+      console.log('Sending briefing data to API:', JSON.stringify(dataToSend).substring(0, 100) + '...');
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(dataToSend),
+      });
+      
+      // Check if response is ok
+      if (!response.ok) {
+        throw new Error(`API responded with status: ${response.status}`);
+      }
+      
+      // Check content type to ensure we're getting JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.warn('Response is not JSON, content type:', contentType);
+        // Try to get the response text for debugging
+        const text = await response.text();
+        console.error('Non-JSON response:', text.substring(0, 200) + '...');
+        throw new Error('Response is not valid JSON');
+      }
+      
+      // Parse the JSON response
+      const data = await response.json();
+      console.log('Successfully received chat response from API');
+      
+      // Ensure the response has the expected format (summary and tips)
+      if (!data.summary || !data.tips) {
+        console.warn('API response missing expected format, transforming data');
+        return {
+          summary: data.summary || 'Journey in progress',
+          tips: data.tips || ['Stay hydrated!']
+        };
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching chat response:', error);
+      
+      // Fall back to generated response if API fails
+      console.log('Falling back to locally generated response');
+      
+      // Convert the response format to match the expected structure
+      const generatedResponse = generateChatResponse(briefingData);
+      return {
+        summary: `${generatedResponse.greeting} ${generatedResponse.progressSummary} ${generatedResponse.timeEstimate}`,
+        tips: generatedResponse.tips
+      };
+    }
+  };
+
+  // Add refresh function
+  const refreshData = async () => {
+    try {
+      setLoading(true);
+      
+      // Show feedback that we're refreshing
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Refreshing data...', ToastAndroid.SHORT);
+      } else {
+        // For iOS, you could use Alert or a custom toast component
+        // For now, we'll just log to console
+        console.log('Refreshing data...');
+      }
+      
+      // Get updated location
+      const updatedLocation = await Location.getCurrentPositionAsync({});
+      setCurrentLocation(updatedLocation);
+      
+      if (activeRoute) {
+        // Generate updated briefing data
+        const updatedBriefing = generateBriefingData(updatedLocation, activeRoute, routePoints);
+        setBriefingData(updatedBriefing);
+        
+        try {
+          // Fetch updated chat response
+          const updatedResponse = await fetchChatResponse(updatedBriefing);
+          setChatResponse(updatedResponse);
+        } catch (chatError) {
+          console.error('Chat response error during refresh:', chatError);
+          // Use generated response as fallback
+          const fallbackResponse = generateChatResponse(updatedBriefing);
+          setChatResponse(fallbackResponse);
+        }
+        
+        // Show success message
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('Data refreshed successfully!', ToastAndroid.SHORT);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      
+      // Show error message
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Failed to refresh data', ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Refresh Failed', 'Unable to update your information at this time.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add this function to toggle between mock and real data for testing
+  const toggleMockData = () => {
+    setUseMockData(!useMockData);
+    
+    // If toggling to mock data, update with mock data
+    if (!useMockData) {
+      setActiveRoute(MOCK_ROUTE);
+      setRoutePoints(MOCK_ROUTE_POINTS);
+      if (currentLocation) {
+        const mockBriefing = generateBriefingData(currentLocation, MOCK_ROUTE, MOCK_ROUTE_POINTS);
+        setBriefingData(mockBriefing);
+        const mockResponse = generateChatResponse(mockBriefing);
+        setChatResponse(mockResponse);
+      }
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Switched to demo mode', ToastAndroid.SHORT);
+      }
+    } else {
+      // Refresh to get real data
+      refreshData();
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Switched to real data mode', ToastAndroid.SHORT);
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -329,18 +519,36 @@ export default function ExploreScreen() {
   }
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ dark: "#0056b3", light: "#007BFF" }}
-      headerImage={require('@/assets/images/partial-react-logo.png')}
-    >
+    <ScrollView>
+      <View style={styles.header}>
+        {/* <LinearGradient
+          colors={['#007BFF', '#0056b3']}
+          style={styles.headerGradient}
+        >
+          <ThemedText style={styles.headerTitle}>Daily Briefing</ThemedText>
+        </LinearGradient> */}
+      </View>
       <ThemedView style={styles.container}>
+        {/* Replace the existing mock data banner with this toggleable version */}
         {useMockData && (
           <ThemedView style={styles.mockDataBanner}>
-            <Ionicons name="information-circle" size={18} color="#fff" />
-            <ThemedText style={styles.mockDataText}>
-              Demo mode - using sample route data
-            </ThemedText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Ionicons name="information-circle" size={18} color="#fff" />
+              <ThemedText style={styles.mockDataText}>
+                Demo mode - using sample route data
+              </ThemedText>
+            </View>
+            <TouchableOpacity onPress={toggleMockData} style={styles.mockDataToggle}>
+              <ThemedText style={styles.mockDataToggleText}>Switch to Real Data</ThemedText>
+            </TouchableOpacity>
           </ThemedView>
+        )}
+
+        {/* Also add a toggle button in debug mode when using real data */}
+        {!useMockData && __DEV__ && (
+          <TouchableOpacity onPress={toggleMockData} style={styles.debugButton}>
+            <ThemedText style={styles.debugButtonText}>Switch to Demo Mode</ThemedText>
+          </TouchableOpacity>
         )}
 
         {/* Progress Overview Section */}
@@ -394,7 +602,7 @@ export default function ExploreScreen() {
             <ThemedView style={styles.weatherMain}>
               <Ionicons 
                 name={briefingData.weather.condition === 'Sunny' ? 'sunny' : 'cloudy'} 
-                size={40} 
+                size={40} // Slightly smaller icon
                 color="#FF9500"
               />
               <ThemedText style={styles.temperatureText}>
@@ -426,14 +634,14 @@ export default function ExploreScreen() {
               <ThemedText style={styles.chatParagraph}>{chatResponse.weatherUpdate}</ThemedText>
             </ThemedView>
             
-            <Collapsible title="Tips for today">
-              {chatResponse.tips.map((tip: string, index: number) => (
-                <ThemedView key={index} style={styles.tipItem}>
-                  <Entypo name="light-bulb" size={16} color="#007BFF" />
-                  <ThemedText style={styles.tipText}>{tip}</ThemedText>
-                </ThemedView>
-              ))}
-            </Collapsible>
+            <ThemedView style={{ borderRadius: 12, padding: 16, backgroundColor: '#151718', marginBottom: 16 }}>
+                {chatResponse.tips.map((tip: string, index: number) => (
+                  <ThemedView key={index} style={styles.tipItem}>
+                    <Entypo name="light-bulb" size={16} color="#007BFF" />
+                    <ThemedText style={styles.tipText}>{tip}</ThemedText>
+                  </ThemedView>
+                ))}
+            </ThemedView>
             
             <ThemedView style={styles.encouragementContainer}>
               <ThemedText style={styles.encouragementText}>
@@ -443,25 +651,16 @@ export default function ExploreScreen() {
           </ThemedView>
         </ThemedView>
 
-        {/* Raw Data Debugging Section (Collapsible) */}
-        <Collapsible title="Debug Information">
-          <RNView style={styles.debugContainer}>
-            <ThemedText style={styles.debugText}>
-              {JSON.stringify(briefingData, null, 2)}
-            </ThemedText>
-          </RNView>
-        </Collapsible>
-
         <ThemedView style={styles.footer}>
           <ThemedText style={styles.footerText}>
             Last updated: {new Date().toLocaleTimeString()}
           </ThemedText>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={refreshData}>
             <ThemedText style={styles.refreshText}>Refresh</ThemedText>
           </TouchableOpacity>
         </ThemedView>
       </ThemedView>
-    </ParallaxScrollView>
+    </ScrollView>
   );
 }
 
@@ -507,7 +706,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 16,
+    padding: 12, // Reduced padding to use more space
+    width: '100%', // Ensure full width
   },
   mockDataBanner: {
     flexDirection: 'row',
@@ -524,24 +724,25 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 16, // Reduced vertical margin
     padding: 16,
     borderRadius: 12,
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.8)' : '#ffffff',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.9)' : '#ffffff', // Increased opacity for better contrast
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    width: '100%', // Ensure sections use full width
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
+    color: '#000000', // Ensure dark text
   },
   progressBarContainer: {
     height: 12,
-    backgroundColor: '#E0E0E0',
     borderRadius: 6,
     marginBottom: 8,
     overflow: 'hidden',
@@ -556,31 +757,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 16,
+    color: '#000000', // Ensure dark text
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    width: '100%', // Ensure full width
+    paddingHorizontal: 8, // Add some padding
+    borderRadius: 8,
   },
   statItem: {
+    flex: 1, // Let each stat take equal width
     alignItems: 'center',
   },
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#F5F5F5', // Changed from #F5F5F5 to dark
   },
   statLabel: {
     fontSize: 14,
-    color: '#666',
   },
   timeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+    borderRadius: 8,
   },
   timeText: {
     fontSize: 18,
     fontWeight: '600',
     marginLeft: 8,
+    color: '#F5F5F5', // Changed from #F5F5F5 to dark
   },
   timeSubtext: {
     fontSize: 14,
@@ -590,53 +798,73 @@ const styles = StyleSheet.create({
   weatherContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
+    padding: 12, // Increased padding
+    borderRadius: 12,
+    marginTop: 8, // Add some spacing from the section title
   },
   weatherMain: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: '40%',
+    flexDirection: 'column', // Changed to column layout
+    alignItems: 'center',    // Center items
+    justifyContent: 'center',
+    paddingRight: 10,
+    borderRightWidth: 1,
+    borderRightColor: '#e0e0e0',
   },
   temperatureText: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginLeft: 8,
+    marginTop: 8, // Add margin at the top
+    color: '#F5F5F5', // Ensure dark text for contrast
   },
   weatherDetails: {
-    flex: 2,
+    width: '60%',
+    paddingLeft: 16,
+    alignItems: 'flex-start',
   },
   weatherCondition: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 4,
+    color: '#F5F5F5',
   },
   weatherSubDetail: {
     fontSize: 14,
-    color: '#666',
+    color: '#F1F1F1',
+    marginBottom: 4,
+    textAlign: 'left',
   },
   chatContainer: {
     marginBottom: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0)',
   },
   chatBubble: {
-    backgroundColor: '#F0F7FF',
+    backgroundColor: '#FFECB3', // Slightly darker blue background for better contrast
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
+    width: '100%', // Use full width
   },
   chatGreeting: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
+    color: '#000000', // Ensure dark text
   },
   chatParagraph: {
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 8,
+    color: '#000000', // Ensure dark text
   },
   tipItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 8,
     paddingHorizontal: 8,
+    borderRadius: 8,
   },
   tipText: {
     fontSize: 16,
@@ -654,6 +882,7 @@ const styles = StyleSheet.create({
   encouragementText: {
     fontSize: 16,
     fontStyle: 'italic',
+    color: '#333',
   },
   debugContainer: {
     padding: 12,
@@ -679,5 +908,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#007BFF',
     fontWeight: '600',
+  },
+  header: {
+    width: '100%',
+    height: 150,
+  },
+  headerGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'flex-end',
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  mockDataToggle: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  mockDataToggleText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  debugButton: {
+    backgroundColor: '#f0f0f0',
+    padding: 8,
+    borderRadius: 4,
+    marginBottom: 16,
+    alignSelf: 'flex-end',
+  },
+  debugButtonText: {
+    fontSize: 12,
+    color: '#666',
   },
 });

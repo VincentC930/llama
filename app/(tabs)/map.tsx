@@ -266,7 +266,7 @@ export default function MapScreen() {
                 latitude: point.latitude,
                 longitude: point.longitude,
               }))}
-              strokeColor="#000"
+              strokeColor="#4CAF50"
               strokeWidth={3}
             />
             {/* Display markers for the selected route */}
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 8,
-    backgroundColor: '#007BFF',
+    backgroundColor: '#4CAF50',
   },
   buttonDisabled: {
     backgroundColor: '#B0B0B0',

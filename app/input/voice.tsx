@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, Platform } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Platform, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
@@ -10,13 +10,16 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import OpenAI from "openai";
+import NetInfo from '@react-native-community/netinfo';
+import { useModel } from '@/app/context/ModelContext';
+import { useLLM, LLAMA3_2_1B_QLORA } from 'react-native-executorch';
 
 // Initialize OpenAI client with API key from environment variable
 const client = new OpenAI({
   apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
 });
 
-const ENDPOINT = "http://10.197.236.114:8000";
+const ENDPOINT = "http://10.197.204.116:8000";
 
 function VoiceInputScreen() {
   const colorScheme = useColorScheme();
@@ -24,6 +27,38 @@ function VoiceInputScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  const { modelReady, modelPath, tokenizerPath } = useModel();
+
+  const llama = useLLM({
+    modelSource: LLAMA3_2_1B_QLORA,
+    tokenizerSource: tokenizerPath,
+    systemPrompt: 'Be a helpful assistant',
+    contextWindowLength: 3,
+  });
+
+  // Monitor llama response and generation state
+  useEffect(() => {
+    if (llama.response && !llama.isGenerating) {
+      setIsSubmitting(false);
+      console.log(llama.response);
+      // Navigate to instructions screen with the response
+      router.push({
+        pathname: '/input/instructions',
+        params: { aiResponse: llama.response }
+      });
+    }
+  }, [llama.response, llama.isGenerating]);
+
+  // keep track of internet connectivity
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+    });
+    setIsConnected(true);
+
+    return () => unsubscribe();
+  }, []);
 
   const handleBack = () => {
     router.back();
@@ -84,36 +119,48 @@ function VoiceInputScreen() {
     setIsSubmitting(true);
 
     console.log('Submitting audio to OpenAI:', audioUri);
-
+    
     try {
+      if (!modelReady && isConnected === false) {
+        Alert.alert('Model not ready', 'Please wait for the model to load before submitting in offline mode.');
+        setIsSubmitting(false);
+        return;
+      }
+
       const base64 = await FileSystem.readAsStringAsync(audioUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
       console.log('base64 encoding created');
 
-      const response = await fetch(`${ENDPOINT}/process`, {
-        method: 'POST',
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: "Help the user with this audio recording.",
-          text: "",
-          image_base64: "",
-          audio_base64: base64,
-        }),
-      });
+      if (isConnected === false) {
+        console.log("offline llama");
+        await llama.generate(`Process this audio recording and help the user with their request.`);
+      } else {
+        const response = await fetch(`${ENDPOINT}/process`, {
+          method: 'POST',
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt: "Help the user with this audio recording.",
+            text: "",
+            image_base64: "",
+            audio_base64: base64,
+          }),
+        });
 
-      const data = await response.json();
-      const aiResponse = data.response;
+        const data = await response.json();
+        const aiResponse = data.response;
 
-      router.push({
-        pathname: '/input/instructions',
-        params: { aiResponse }
-      });
+        router.push({
+          pathname: '/input/instructions',
+          params: { aiResponse }
+        });
+      }
     } catch (error) {
-      console.error("Error converting image to base64:", error);
-      return null;
+      console.error("Error processing audio:", error);
+      setIsSubmitting(false);
+      Alert.alert('Error', 'Failed to process audio. Please try again.');
     }
   };
 

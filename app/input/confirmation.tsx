@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Image, TextInput, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -10,9 +10,12 @@ import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import OpenAI from "openai";
 import * as FileSystem from 'expo-file-system';
+import NetInfo from '@react-native-community/netinfo';
+import { useModel } from '@/app/context/ModelContext';
+import { useLLM, LLAMA3_2_1B_QLORA } from 'react-native-executorch';
 
 const openaiApiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-const ENDPOINT = "http://10.197.236.114:8000";
+const ENDPOINT = "http://10.197.204.116:8000";
 
 // Initialize OpenAI client
 const client = new OpenAI({apiKey: openaiApiKey, dangerouslyAllowBrowser: true});
@@ -26,7 +29,39 @@ export default function ImageConfirmationScreen() {
   const [hasRecording, setHasRecording] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResponseComplete, setIsResponseComplete] = useState(false);
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const colorScheme = useColorScheme();
+  const { modelReady, modelPath, tokenizerPath } = useModel();
+  
+  const llama = useLLM({
+    modelSource: LLAMA3_2_1B_QLORA,
+    tokenizerSource: tokenizerPath,
+    systemPrompt: 'Be a helpful assistant',
+    contextWindowLength: 3,
+  });
+
+  // Monitor llama response and generation state
+  useEffect(() => {
+    if (llama.response && !llama.isGenerating) {
+      setIsSubmitting(false);
+      console.log(llama.response);
+      // Navigate to instructions screen with the response
+      router.push({
+        pathname: '/input/instructions',
+        params: { aiResponse: llama.response }
+      });
+    }
+  }, [llama.response, llama.isGenerating]);
+
+  // keep track of internet connectivity
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+    });
+    setIsConnected(true);
+
+    return () => unsubscribe();
+  }, []);
   
   // Start or stop voice recording
   const toggleRecording = () => {
@@ -62,7 +97,17 @@ export default function ImageConfirmationScreen() {
   const sendImageUriAsBase64 = async (imageUri: string) => {
     try {
       const dataUrl = await convertUriToBase64(imageUri);
-      const response = await fetch(`${ENDPOINT}/process`, {
+      
+      if (isConnected === false) {
+        if (!modelReady) {
+          Alert.alert('Model not ready', 'Please wait for the model to load before submitting in offline mode.');
+          return;
+        }
+        console.log("offline llama - processing image with text:", text);
+        // Using LLaMA in offline mode
+        await llama.generate(`Analyze this image and ${text ? `help with the following: ${text}` : 'provide helpful insights.'}`);
+      } else {
+        const response = await fetch(`${ENDPOINT}/process`, {
           method: 'POST',
           headers: {
             "Content-Type": "application/json",
@@ -73,58 +118,68 @@ export default function ImageConfirmationScreen() {
             image_base64: dataUrl,
             audio_base64: "",
           }),
-      });
+        });
 
-      const data = await response.json();
-      const aiResponse = data.response;
+        const data = await response.json();
+        const aiResponse = data.response;
 
-      router.push({
-        pathname: '/input/instructions',
-        params: { aiResponse }
-      });
-    
+        router.push({
+          pathname: '/input/instructions',
+          params: { aiResponse }
+        });
+      }
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
-          Alert.alert(
-            'Error',
-            'Something went wrong while processing your request. Please try again.'
-          );
-          setIsSubmitting(false);
+      console.error('Error processing image:', error);
+      Alert.alert(
+        'Error',
+        'Something went wrong while processing your request. Please try again.'
+      );
+      setIsSubmitting(false);
     }
   };
 
   const sendRecordingUriAsBase64 = async (recordingUri: string) => {
     try {
       const dataUrl = await convertUriToBase64(recordingUri);
-      const response = await fetch(`${ENDPOINT}/process`, {
+      
+      if (isConnected === false) {
+        if (!modelReady) {
+          Alert.alert('Model not ready', 'Please wait for the model to load before submitting in offline mode.');
+          return;
+        }
+        console.log("offline llama - processing audio");
+        // Using LLaMA in offline mode
+        await llama.generate(`Process this audio recording and ${text ? `consider this additional context: ${text}` : 'help the user with their request.'}`);
+      } else {
+        const response = await fetch(`${ENDPOINT}/process`, {
           method: 'POST',
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             prompt: "Help the user with this audio recording.",
-            text: "",
+            text: text || "",
             image_base64: "",
             audio_base64: dataUrl,
           }),
-      });
+        });
 
-      const data = await response.json();
-      const aiResponse = data.response;
+        const data = await response.json();
+        const aiResponse = data.response;
 
-      // Navigate to instructions screen with the response
-      router.push({
-        pathname: '/input/instructions',
-        params: { aiResponse }
-      });
-    
+        // Navigate to instructions screen with the response
+        router.push({
+          pathname: '/input/instructions',
+          params: { aiResponse }
+        });
+      }
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
-          Alert.alert(
-            'Error',
-            'Something went wrong while processing your request. Please try again.'
-          );
-          setIsSubmitting(false);
+      console.error('Error processing audio:', error);
+      Alert.alert(
+        'Error',
+        'Something went wrong while processing your request. Please try again.'
+      );
+      setIsSubmitting(false);
     }
   };
 
@@ -133,18 +188,23 @@ export default function ImageConfirmationScreen() {
     setIsSubmitting(true);
     
     try {
+      if (!isConnected && !modelReady) {
+        Alert.alert('Offline Mode', 'You are currently offline and the local model is not ready. Please connect to the internet or wait for the model to load.');
+        setIsSubmitting(false);
+        return;
+      }
+      
       if (imageUri) {
         console.log("image received");
         sendImageUriAsBase64(imageUri);
       } else if (recordingUri) {
         console.log("recording received");
         sendRecordingUriAsBase64(recordingUri);
+      } else {
+        setIsSubmitting(false);
       }
-      
-      router.replace('../input/instructions');
     } catch (error) {
       console.error('Navigation error:', error);
-    } finally {
       setIsSubmitting(false);
     }
   };

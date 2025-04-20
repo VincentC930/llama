@@ -1,6 +1,8 @@
 # Welcome to PROJECT_NAME
 Please note default branch is vincent, not main. latest changes are found on branch vincent.
 
+Please also modify 10.197.204.116 to your computer ip address that you are hosting the FastAPI server from when testing our app.
+
 ## Getting started
 
 1. Install dependencies

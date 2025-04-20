@@ -351,19 +351,18 @@ export default function ExploreScreen() {
   const fetchChatResponse = async (briefingData: any) => {
     try {
       // Configure your actual API endpoint here
-      const apiUrl = 'https://your-api-endpoint.com/path';
+      const apiUrl = 'https://10.197.204.116:8000/path';
       
       // Prepare the data to send including the required parameters
       const dataToSend = {
-        ...briefingData,
-        distanceTravelled: briefingData.completedDistance,
-        distanceLeft: briefingData.totalDistance - briefingData.completedDistance,
-        daysTravelled: 0, // Hard coded to 0 as requested
-        long: briefingData.currentLocation?.coords?.longitude || 0,
-        lat: briefingData.currentLocation?.coords?.latitude || 0
+        latitude: briefingData.currentLocation.latitude,
+        longitude: briefingData.currentLocation.longitude,
+        dist_traveled: parseFloat(briefingData.completedDistance),
+        dist_left: parseFloat(briefingData.remainingDistance),
+        days_traveled: 0 // Hard coded to 0 as requested
       };
       
-      console.log('Sending briefing data to API:', JSON.stringify(dataToSend).substring(0, 100) + '...');
+      console.log('Sending briefing data to API:', JSON.stringify(dataToSend));
       
       const response = await fetch(apiUrl, {
         method: 'POST',

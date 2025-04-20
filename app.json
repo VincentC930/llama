@@ -10,13 +10,30 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.llama"
+      "bundleIdentifier": "com.anonymous.llama",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to take photos for help requests",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photos to help analyze your requests",
+        "NSMicrophoneUsageDescription": "This app uses the microphone to record voice for help requests",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.vincentc930.llama"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ],
       "package": "com.anonymous.llama"
     },
     "web": {
@@ -34,10 +51,27 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "CUSTOM: Allow $(PRODUCT_NAME) to access the microphone",
+          "speechRecognitionPermission": "CUSTOM: Allow $(PRODUCT_NAME) to securely recognize user speech"
+        }
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
+      "tsconfigPaths": true,
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "048ef519-57c4-4524-a486-3566726c5071"
+      }
     }
   }
 }

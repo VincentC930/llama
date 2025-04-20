@@ -1,7 +1,14 @@
-const { getDefaultConfig } = require('@expo/metro-config');
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
 
-const config = getDefaultConfig(__dirname);
+const defaultConfig = getDefaultConfig(__dirname);
+defaultConfig.resolver.assetExts.push('pte');  
+defaultConfig.resolver.assetExts.push('bin');
 
-config.resolver.assetExts.push('pte', 'bin');
+// Exclude large files from Metro bundler
+defaultConfig.watchFolders = [__dirname];
+defaultConfig.resolver.blacklistRE = [
+  /.*assets\/llama3_2-3B_qat_lora\.pte$/
+];
 
-module.exports = config;
+module.exports = defaultConfig;

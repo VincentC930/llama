@@ -9,26 +9,6 @@ import { fetchRoutes, fetchRoutePoints } from '@/database';
 import { RouteType, RoutePointType } from '@/types';
 // import { LinearGradient } from 'expo-linear-gradient';
 
-// Mock route and weather data for demonstration
-const MOCK_ROUTE = {
-  id: 999,
-  name: 'Demo Route',
-  createdAt: Date.now()
-};
-
-const MOCK_ROUTE_POINTS = [
-  { id: 1, routeId: 999, markerId: 1, sequence: 0, latitude: 37.7749, longitude: -122.4194 },
-  { id: 2, routeId: 999, markerId: 2, sequence: 1, latitude: 37.7850, longitude: -122.4300 },
-  { id: 3, routeId: 999, markerId: 3, sequence: 2, latitude: 37.7900, longitude: -122.4150 },
-];
-
-const WEATHER_DATA = {
-  temperature: 72,
-  condition: 'Sunny',
-  humidity: 45,
-  windSpeed: 8,
-};
-
 export default function ExploreScreen() {
   const [loading, setLoading] = useState(true);
   const [currentLocation, setCurrentLocation] = useState<Location.LocationObject | null>(null);
@@ -36,71 +16,41 @@ export default function ExploreScreen() {
   const [routePoints, setRoutePoints] = useState<RoutePointType[]>([]);
   const [briefingData, setBriefingData] = useState<any>(null);
   const [chatResponse, setChatResponse] = useState<any>(null);
-  const [useMockData, setUseMockData] = useState(false);
 
   useEffect(() => {
     const initialize = async () => {
       try {
         setLoading(true);
-        
-        // Request location permissions
+
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           console.error('Location permission denied');
           return;
         }
 
-        // Get user's current location
         const location = await Location.getCurrentPositionAsync({});
         setCurrentLocation(location);
 
-        // Fetch available routes
         const routes = await fetchRoutes();
-        
-        // If we have routes from the database, use the most recent one
+
         if (routes.length > 0) {
           console.log('Found existing route:', routes[0].name);
-          const mostRecentRoute = routes[0]; // Assuming routes are ordered by createdAt DESC
+          const mostRecentRoute = routes[0];
           setActiveRoute(mostRecentRoute);
           
-          // Fetch route points for the selected route
           const points = await fetchRoutePoints(mostRecentRoute.id);
           setRoutePoints(points);
-          
-          // Generate briefing data with real route information
+
           const briefing = generateBriefingData(location, mostRecentRoute, points);
           setBriefingData(briefing);
           
-          // Fetch chat response from API
           const response = await fetchChatResponse(briefing);
           setChatResponse(response);
         } else {
-          console.log('No routes found, using mock data');
-          // No routes found, keep using mock data for demonstration
-          setUseMockData(true);
-          setActiveRoute(MOCK_ROUTE);
-          setRoutePoints(MOCK_ROUTE_POINTS);
-          
-          // Generate briefing with mock data
-          const briefing = generateBriefingData(location, MOCK_ROUTE, MOCK_ROUTE_POINTS);
-          setBriefingData(briefing);
-          
-          // Fetch chat response from API using mock data
-          const response = await fetchChatResponse(briefing);
-          setChatResponse(response);
+          console.log('No routes found');
         }
       } catch (error) {
         console.error('Error initializing explore screen:', error);
-        // Fall back to mock data in case of error
-        if (currentLocation) {
-          setUseMockData(true);
-          setActiveRoute(MOCK_ROUTE);
-          setRoutePoints(MOCK_ROUTE_POINTS);
-          const briefing = generateBriefingData(currentLocation, MOCK_ROUTE, MOCK_ROUTE_POINTS);
-          setBriefingData(briefing);
-          const response = generateChatResponse(briefing);
-          setChatResponse(response);
-        }
       } finally {
         setLoading(false);
       }
@@ -135,7 +85,6 @@ export default function ExploreScreen() {
     return R * c; // Distance in kilometers
   };
 
-  // Generate JSON briefing data based on user location and route information
   const generateBriefingData = (
     location: Location.LocationObject, 
     route: RouteType, 
@@ -143,7 +92,6 @@ export default function ExploreScreen() {
   ) => {
     if (!location || !route || points.length < 2) {
       console.log('Insufficient data to generate briefing, using mock data');
-      // Provide default values if we're missing data
       return {
         routeName: route?.name || 'Demo Route',
         routeId: route?.id || 999,
@@ -166,7 +114,6 @@ export default function ExploreScreen() {
       };
     }
 
-    // Find the nearest point on the route to current location
     let nearestPointIndex = 0;
     let minDistance = Number.MAX_VALUE;
     
@@ -183,8 +130,7 @@ export default function ExploreScreen() {
         nearestPointIndex = index;
       }
     });
-    
-    // Calculate total route distance using Haversine formula
+
     let totalDistance = 0;
     for (let i = 0; i < points.length - 1; i++) {
       totalDistance += calculateDistance(
@@ -194,8 +140,7 @@ export default function ExploreScreen() {
         points[i+1].longitude
       );
     }
-    
-    // Calculate completed distance
+
     let completedDistance = 0;
     for (let i = 0; i < nearestPointIndex; i++) {
       completedDistance += calculateDistance(
@@ -206,10 +151,7 @@ export default function ExploreScreen() {
       );
     }
     
-    // Add distance from current location to nearest point for more accuracy
-    // if nearest point is not the first point
     if (nearestPointIndex > 0) {
-      // Calculate remaining distance to the nearest point
       const distanceToNearestPoint = calculateDistance(
         location.coords.latitude,
         location.coords.longitude,
@@ -217,7 +159,6 @@ export default function ExploreScreen() {
         points[nearestPointIndex].longitude
       );
       
-      // Adjust completed distance based on user's position between points
       const segmentLength = calculateDistance(
         points[nearestPointIndex-1].latitude,
         points[nearestPointIndex-1].longitude,
@@ -225,8 +166,6 @@ export default function ExploreScreen() {
         points[nearestPointIndex].longitude
       );
       
-      // If user is past the nearest point, count that segment as complete
-      // Otherwise adjust based on proximity
       if (distanceToNearestPoint <= 0.05) { // Within 50 meters
         completedDistance = calculateDistance(
           points[0].latitude,
@@ -237,19 +176,13 @@ export default function ExploreScreen() {
       }
     }
     
-    // Calculate remaining distance
     const remainingDistance = totalDistance - completedDistance;
-    
-    // Calculate progress percentage
+
     const progressPercentage = Math.min(100, Math.round((completedDistance / totalDistance) * 100));
     
-    // Calculate estimated time to completion (assuming average walking speed of 5 km/h)
     const estimatedHours = remainingDistance / 5;
     const hours = Math.floor(estimatedHours);
     const minutes = Math.round((estimatedHours - hours) * 60);
-    
-    // Attempt to fetch real weather data (would need a weather API)
-    // For now, using the mock weather data
     
     return {
       routeName: route.name,
@@ -268,12 +201,11 @@ export default function ExploreScreen() {
         hours,
         minutes,
       },
-      weather: WEATHER_DATA, // Replace with actual weather API call if available
+      weather: WEATHER_DATA, 
       timestamp: new Date().toISOString(),
     };
   };
 
-  // Generate mock chat response based on briefing data
   const generateChatResponse = (briefingData: any) => {
     if (!briefingData) {
       return {
@@ -295,7 +227,6 @@ export default function ExploreScreen() {
       weather 
     } = briefingData;
     
-    // Generate personalized tips based on progress and weather
     let tips = [];
     
     if (progressPercentage < 25) {

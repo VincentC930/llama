@@ -520,37 +520,7 @@ export default function ExploreScreen() {
 
   return (
     <ScrollView>
-      <View style={styles.header}>
-        {/* <LinearGradient
-          colors={['#007BFF', '#0056b3']}
-          style={styles.headerGradient}
-        >
-          <ThemedText style={styles.headerTitle}>Daily Briefing</ThemedText>
-        </LinearGradient> */}
-      </View>
       <ThemedView style={styles.container}>
-        {/* Replace the existing mock data banner with this toggleable version */}
-        {useMockData && (
-          <ThemedView style={styles.mockDataBanner}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-              <Ionicons name="information-circle" size={18} color="#fff" />
-              <ThemedText style={styles.mockDataText}>
-                Demo mode - using sample route data
-              </ThemedText>
-            </View>
-            <TouchableOpacity onPress={toggleMockData} style={styles.mockDataToggle}>
-              <ThemedText style={styles.mockDataToggleText}>Switch to Real Data</ThemedText>
-            </TouchableOpacity>
-          </ThemedView>
-        )}
-
-        {/* Also add a toggle button in debug mode when using real data */}
-        {!useMockData && __DEV__ && (
-          <TouchableOpacity onPress={toggleMockData} style={styles.debugButton}>
-            <ThemedText style={styles.debugButtonText}>Switch to Demo Mode</ThemedText>
-          </TouchableOpacity>
-        )}
-
         {/* Progress Overview Section */}
         <ThemedView style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Trip Progress</ThemedText>
@@ -585,14 +555,11 @@ export default function ExploreScreen() {
         <ThemedView style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Time Estimation</ThemedText>
           <ThemedView style={styles.timeContainer}>
-            <Ionicons name="timer" size={24} color="#007BFF" />
+            <Ionicons name="timer" size={24} color="#4CAF50" />
             <ThemedText style={styles.timeText}>
               {briefingData.estimatedTimeRemaining.hours} h {briefingData.estimatedTimeRemaining.minutes} min remaining
             </ThemedText>
           </ThemedView>
-          <ThemedText style={styles.timeSubtext}>
-            Based on average walking speed of 5 km/h
-          </ThemedText>
         </ThemedView>
 
         {/* Weather Section */}
@@ -706,40 +673,28 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 12, // Reduced padding to use more space
-    width: '100%', // Ensure full width
-  },
-  mockDataBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    marginBottom: 16,
-    backgroundColor: '#FF9500',
-    borderRadius: 8,
-  },
-  mockDataText: {
-    color: '#fff',
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: '500',
+    padding: 12,
+    width: '100%',
+    marginTop: 64,
+    marginBottom: 64,
   },
   section: {
-    marginBottom: 16, // Reduced vertical margin
+    marginBottom: 16,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.9)' : '#ffffff', // Increased opacity for better contrast
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.95)' : '#ffffff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-    width: '100%', // Ensure sections use full width
+    width: '100%',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
-    color: '#000000', // Ensure dark text
+    color: '#222222',
   },
   progressBarContainer: {
     height: 12,
@@ -773,26 +728,29 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#F5F5F5', // Changed from #F5F5F5 to dark
+    color: '#FFFFFF',
   },
   statLabel: {
     fontSize: 14,
+    color: '#EEEEEE',
   },
   timeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    borderRadius: 8,
+    marginBottom: 16,
+    borderRadius: 16,
   },
   timeText: {
     fontSize: 18,
+    lineHeight: 24,
+    paddingVertical: 8,
     fontWeight: '600',
     marginLeft: 8,
-    color: '#F5F5F5', // Changed from #F5F5F5 to dark
+    color: '#FFFFFF',
   },
   timeSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: '#DDDDDD',
     fontStyle: 'italic',
   },
   weatherContainer: {
@@ -911,40 +869,6 @@ const styles = StyleSheet.create({
   },
   header: {
     width: '100%',
-    height: 150,
-  },
-  headerGradient: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'flex-end',
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  mockDataToggle: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  mockDataToggleText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  debugButton: {
-    backgroundColor: '#f0f0f0',
-    padding: 8,
-    borderRadius: 4,
-    marginBottom: 16,
-    alignSelf: 'flex-end',
-  },
-  debugButtonText: {
-    fontSize: 12,
-    color: '#666',
+    height: 0,
   },
 });

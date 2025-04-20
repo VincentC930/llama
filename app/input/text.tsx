@@ -12,11 +12,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { useLLM, LLAMA3_2_1B_QLORA } from 'react-native-executorch';
 import NetInfo from '@react-native-community/netinfo';
 
-const ENDPOINT = "http://10.197.236.114:8000";
-
-// Initialize OpenAI client
-const openaiApiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-const client = new OpenAI({apiKey: openaiApiKey, dangerouslyAllowBrowser: true});
+const LOCAL_IP = "0.0.0.0";
+const ENDPOINT = `http://${LOCAL_IP}:8000`;
 
 function TextInputScreen() {
   const colorScheme = useColorScheme();
@@ -165,18 +162,21 @@ function TextInputScreen() {
         <TouchableOpacity 
           style={[
             styles.submitButton,
-            (!text.trim() || isSubmitting || !modelReady) && styles.submitButtonDisabled
+            (!text.trim() || isSubmitting) && styles.submitButtonDisabled
           ]} 
           onPress={handleSubmit}
-          disabled={!text.trim() || isSubmitting || !modelReady}
+          disabled={!text.trim() || isSubmitting}
         >
           {isSubmitting ? (
             <ThemedText style={styles.submitText}>Processing...</ThemedText>
-          ) : !modelReady && downloadProgress > 0 ? (
-            <ThemedText style={styles.submitText}>Downloading model...</ThemedText>
-          ) : !modelReady ? (
-            <ThemedText style={styles.submitText}>Preparing model...</ThemedText>
-          ) : (
+          )
+          // ) : !modelReady && downloadProgress > 0 ? (
+          //   <ThemedText style={styles.submitText}>Downloading model...</ThemedText>
+          // ) : !modelReady 
+          // (
+          //   <ThemedText style={styles.submitText}>Preparing model...</ThemedText>
+          // ) 
+          : (
             <ThemedText style={styles.submitText}>Submit</ThemedText>
           )}
         </TouchableOpacity>

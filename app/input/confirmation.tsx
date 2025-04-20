@@ -8,14 +8,10 @@ import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import OpenAI from "openai";
 import * as FileSystem from 'expo-file-system';
 
-const openaiApiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-const ENDPOINT = "http://10.197.236.114:8000";
-
-// Initialize OpenAI client
-const client = new OpenAI({apiKey: openaiApiKey, dangerouslyAllowBrowser: true});
+const localIP = process.env.EXPO_PUBLIC_LOCAL_IP;
+const ENDPOINT = `http://${localIP}:8000`;
 
 export default function ImageConfirmationScreen() {
   const params = useLocalSearchParams();

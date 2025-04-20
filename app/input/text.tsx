@@ -11,7 +11,6 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { useModel } from '@/app/context/ModelContext';
 import { useLLM, LLAMA3_2_1B_QLORA } from 'react-native-executorch';
 import NetInfo from '@react-native-community/netinfo';
-import { useEffect, useState } from 'react';
 
 const ENDPOINT = "http://10.197.236.114:8000";
 
@@ -82,8 +81,6 @@ function TextInputScreen() {
     
     try {
       console.log("text prompt");
-
-      if (isConnected )
 
       const response = await fetch(`${ENDPOINT}/process`, {
         method: 'POST',

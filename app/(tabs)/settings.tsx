@@ -42,9 +42,32 @@ export default function SettingsScreen() {
 
   const addKnowledgeSource = () => {
     if (sourceLink && !knowledgeSources.includes(sourceLink)) {
-      setKnowledgeSources([...knowledgeSources, sourceLink]);
-      setSourceLink('');
-      Keyboard.dismiss();
+      // Send the URL to the /context endpoint
+      fetch('http://localhost:3000/context', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: sourceLink }),
+      })
+        .then(response => response.json())
+        .then(data => {
+          // Handle the response which should contain 3 strings
+          console.log('Received from endpoint:', data);
+          
+          // TODO: Add the sources to the database
+          // For now just add to the state
+          setKnowledgeSources([...knowledgeSources, sourceLink]);
+          setSourceLink('');
+          Keyboard.dismiss();
+        })
+        .catch(error => {
+          console.error('Error adding knowledge source:', error);
+          // Add to state anyway for now
+          setKnowledgeSources([...knowledgeSources, sourceLink]);
+          setSourceLink('');
+          Keyboard.dismiss();
+        });
     }
   };
 

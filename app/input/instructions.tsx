@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import AIResponseView from './aiResponse';
 
 export default function InstructionsScreen() {
   const colorScheme = useColorScheme();
@@ -30,6 +31,18 @@ export default function InstructionsScreen() {
     // Navigate back to the help screen
     router.replace('/(tabs)/help');
   };
+
+  const FormatAiResponse = () => {
+    if (!aiResponse) {
+      return;
+    }
+
+    const responseObject = JSON.parse(aiResponse);
+
+    return (
+      <AIResponseView aiResponse={responseObject} />
+    );
+  }
   
   const toggleSpeech = async () => {
     // If already speaking, stop the speech
@@ -110,9 +123,7 @@ export default function InstructionsScreen() {
         {aiResponse ? (
           <ThemedView style={styles.card}>
             <ThemedText type="subtitle">AI Response</ThemedText>
-            <ThemedText style={styles.aiResponse}>
-              {aiResponse}
-            </ThemedText>
+            <FormatAiResponse />
           </ThemedView>
         ) : (
           // Standard instructions when no AI response

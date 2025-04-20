@@ -1,4 +1,5 @@
 # Welcome to PROJECT_NAME
+Please note default branch is vincent, not main. latest changes are found on branch vincent.
 
 ## Getting started
 

@@ -8,7 +8,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { useModel } from '@/app/context/ModelContext';
+// import { useModel } from '@/app/context/ModelContext';
 import { useLLM, LLAMA3_2_1B_QLORA } from 'react-native-executorch';
 import NetInfo from '@react-native-community/netinfo';
 
@@ -23,16 +23,16 @@ function TextInputScreen() {
   const [text, setText] = useState('');
   const [response, setReponse] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { modelReady, downloadProgress, modelPath, tokenizerPath } = useModel();
+  // const { modelReady, downloadProgress, modelPath, tokenizerPath } = useModel();
   const [aiResponse, setAiResponse] = useState('');
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
 
-  const llama = useLLM({
-    modelSource: LLAMA3_2_1B_QLORA,
-    tokenizerSource: tokenizerPath,
-    systemPrompt: 'Be a helpful assistant',
-    contextWindowLength: 3,
-  });
+  // const llama = useLLM({
+  //   modelSource: LLAMA3_2_1B_QLORA,
+  //   tokenizerSource: tokenizerPath,
+  //   systemPrompt: 'Be a helpful assistant',
+  //   contextWindowLength: 3,
+  // });
 
   // keep track of internet connectivity
   useEffect(() => {
@@ -44,30 +44,30 @@ function TextInputScreen() {
   }, []);
 
   // Monitor llama response and generation state
-  useEffect(() => {
-    if (llama.response && !llama.isGenerating) {
-      setAiResponse(llama.response);
-      setIsSubmitting(false);
-      console.log(llama.response);
-      // Navigate to instructions screen with the response
-      router.push({
-        pathname: '/input/instructions',
-        params: { aiResponse: llama.response }
-      });
-    }
-  }, [llama.response, llama.isGenerating]);
+  // useEffect(() => {
+  //   if (llama.response && !llama.isGenerating) {
+  //     setAiResponse(llama.response);
+  //     setIsSubmitting(false);
+  //     console.log(llama.response);
+  //     // Navigate to instructions screen with the response
+  //     router.push({
+  //       pathname: '/input/instructions',
+  //       params: { aiResponse: llama.response }
+  //     });
+  //   }
+  // }, [llama.response, llama.isGenerating]);
 
   const handleBack = () => {
     router.back();
   };
 
   const handleSubmit = async () => {
-    if (!text.trim() || isSubmitting || !modelReady) {
-      if (!modelReady) {
-        Alert.alert('Model not ready', 'Please wait for the model to load before submitting.');
-      }
-      return;
-    }
+    // if (!text.trim() || isSubmitting || !modelReady) {
+    //   if (!modelReady) {
+    //     Alert.alert('Model not ready', 'Please wait for the model to load before submitting.');
+    //   }
+    //   return;
+    // }
     
     try {
       setIsSubmitting(true);
@@ -76,7 +76,7 @@ function TextInputScreen() {
       let response;
       if (isConnected == false) {
         console.log("offline llama");
-        await llama.generate(text);
+        // await llama.generate(text);
       } else {
         response = await fetch(`${ENDPOINT}/process`, {
           method: 'POST',
@@ -125,7 +125,7 @@ function TextInputScreen() {
         </View>
 
         {/* Download progress indicator */}
-        {!modelReady && downloadProgress > 0 && downloadProgress < 1 && (
+        {/* {!modelReady && downloadProgress > 0 && downloadProgress < 1 && (
           <View style={styles.downloadContainer}>
             <ThemedText style={styles.downloadText}>
               Downloading model: {Math.round(downloadProgress * 100)}%
@@ -139,7 +139,7 @@ function TextInputScreen() {
               />
             </View>
           </View>
-        )}
+        )} */}
 
         {/* Input area */}
         <ThemedView style={styles.inputContainer}>
